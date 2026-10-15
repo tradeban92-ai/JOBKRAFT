@@ -1,4 +1,4 @@
-<!-- money-build 2026-10-14-1530 -->
+<!-- money-build 2026-10-15-1130 -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -470,7 +470,7 @@
 <header>
   <div class="head-row"><p class="eyebrow" id="today"></p></div>
   <h1 id="pageTitle">Инвест</h1>
-  <p class="ver">версия 2026-10-14-1530</p>
+  <p class="ver">версия 2026-10-15-1130</p>
 </header>
 
 <nav class="tabs">
@@ -1267,12 +1267,12 @@ function renderShipments(){
 
   let list = SH_SEG === 'active' ? active : SH_SEG === 'unloaded' ? unl : arch;
   if (SH_SEG === 'active') list = [...list].sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999') || a.id - b.id);
-  if (SH_Q){ const q = SH_Q.toLowerCase(); list = list.filter(r => [r.id, r.client, r.route, r.carrier, r.truck, r.driver, r.location].join(' ').toLowerCase().includes(q)); }
+  if (SH_Q){ const q = SH_Q.toLowerCase(); list = list.filter(r => [r.id, r.order, r.client, r.route, r.carrier, r.truck, r.driver, r.location].join(' ').toLowerCase().includes(q)); }
 
   const card = r => {
     const stale = r.status === 'в пути' && shHours(r.location_at) > 24;
     const base = `
-      <div class="sp-top"><b>${esc(r.route || '—')}</b><span>#${r.id}</span></div>
+      <div class="sp-top"><b>${esc(r.route || '—')}</b><span>${r.order ? 'заказ ' + esc(r.order) + ' · ' : ''}#${r.id}</span></div>
       <div class="ar-sub">${[r.client, r.carrier].filter(Boolean).map(esc).join(' · ') || '—'}</div>
       <div class="ar-sub">${r.truck || r.driver ? [r.truck, r.driver].filter(Boolean).map(esc).join(' · ') : '<i class="sp-miss">авто не указано</i>'}</div>`;
     if (SH_SEG === 'active') return `<div class="sp-card">
@@ -1303,7 +1303,7 @@ function renderShipments(){
     <div class="or-sum"><div><b>Мои перевозки</b><span>в пути ${onWay} · ждут счетов ${noInv} · маржа за месяц ${marginMonth.toLocaleString('ru-RU')}</span></div>
       <strong>${active.length}</strong><button type="button" class="or-refresh" aria-label="Обновить">↻</button></div>
     <div class="ln-chips">${seg('active','Активные',active.length)}${seg('unloaded','Выгружены',unl.length)}${seg('archive','Архив',arch.length)}</div>
-    <input class="inv-in sp-search" id="spSearch" type="search" placeholder="Поиск: клиент, авто, маршрут, #номер" value="${esc(SH_Q)}">
+    <input class="inv-in sp-search" id="spSearch" type="search" placeholder="Поиск: клиент, авто, маршрут, заказ" value="${esc(SH_Q)}">
     ${list.length ? list.map(card).join('') : `<div class="inv-plan">${SH_SEG === 'active' ? 'Активных перевозок нет. Напиши боту задание — появится здесь.' : SH_SEG === 'unloaded' ? 'Нет выгруженных без архива.' : 'Архив пуст.'}</div>`}`;
 
   m.querySelector('.or-refresh').onclick = () => loadShipments(true);
