@@ -537,7 +537,7 @@
 <header>
   <div class="head-row"><p class="eyebrow" id="today"></p></div>
   <h1 id="pageTitle">Инвест</h1>
-  <p class="ver">версия 2026-10-26-2300</p>
+  <p class="ver">версия 2026-10-27-0000</p>
 </header>
 
 <nav class="tabs">
@@ -1281,14 +1281,14 @@ let TR_DATA = null;
 // ===== ПЕРЕВОЗКИ — таблица Маши (общая). Ключи приходят из воркфлоу Money Trips API =====
 // req — галочка «Заявка» (заявка перевозчику отправлена), mgr — «Чья», client, route, num — «Номер», truck — «Машина»,
 // car — перевозчик, d1 — дата загрузки, locOld / locNew — локации, inv — «Счет», invNo — номер счёта, payCar — «оплата» (дата платежа перевозчику), note
-const TR_LABEL = { req:'Заявка перевозчику отправлена', mgr:'Чья', client:'Клиент', route:'Маршрут', num:'Номер', truck:'Машина', car:'Перевозчик',
-  d1:'Дата загрузки', locOld:'Локация старая', locNew:'Локация новая', inv:'Счёт', invNo:'Номер счёта', payCar:'Оплата перевозчику (дата)', note:'Комментарий' };
+const TR_LABEL = { req:'Заявка перевозчику отправлена', mgr:'Чья', client:'Клиент', route:'Маршрут', num:'Номер', order:'order', trip:'trip', truck:'Машина', car:'Перевозчик',
+  d1:'Дата загрузки', locOld:'Локация старая', locNew:'Локация новая', unFact:'Дата выгрузки', inv:'Счёт', invNo:'Номер счёта', payCar:'Оплата перевозчику (дата)', note:'Комментарий' };
 const TR_SHORT = { truck:'машина', car:'перевозчик', d1:'дата загрузки', locNew:'локация', payCar:'дата оплаты перевозчику', client:'клиент', route:'маршрут' };
-const TR_DATES = ['d1','payCar'];
+const TR_DATES = ['d1','unFact','payCar'];
 const TR_SECTIONS = [
-  ['Основное', ['req','mgr','client','route','num']],
+  ['Основное', ['req','mgr','client','route','num','order','trip']],
   ['Машина', ['truck','car','d1']],
-  ['Локация', ['locNew','locOld']],
+  ['Локация и выгрузка', ['locNew','locOld','unFact']],
   ['Счета и оплата', ['inv','invNo','payCar']],
   ['Прочее', ['note']]
 ];
@@ -1307,7 +1307,7 @@ const trUnloadedText = s => /выгруж|выгруз/i.test(String(s || ''));
 // Этап перевозки
 function trStage(r, today){
   if (trN(r.inv) === 'оба') return 'closed';
-  if (trUnloadedText(r.locNew) || (!trHas(r.locNew) && trUnloadedText(r.locOld))) return 'unloaded';
+  if (trHas(r.unFact) || trUnloadedText(r.locNew) || (!trHas(r.locNew) && trUnloadedText(r.locOld))) return 'unloaded';
   if (trIso(r.d1) && r.d1 <= today) return 'onway';
   return 'planned';
 }
@@ -1387,7 +1387,7 @@ let TR_GRP = trLs('tr_grp', 'all'), TR_MGR = trLs('tr_mgr', 'all'), TR_SUB = 'al
 function trLocCopy(list, which){
   const lines = list.filter(x => x.st === 'onway').map(({ r }) => {
     const loc = trLocText(which === 'old' ? r.locOld : r.locNew);
-    return [r.num, r.truck, loc || '—'].map(v => String(v || '').trim()).filter(Boolean).join(', ');
+    return [r.num || r.order || r.trip, r.truck, loc || '—'].map(v => String(v || '').trim()).filter(Boolean).join(', ');
   });
   const sheet = trSheet(`
     <div class="sh-head"><div><div class="sh-name">${which === 'old' ? 'Локации старые' : 'Локации новые'}</div>
@@ -1407,8 +1407,10 @@ function trAllRows(){
   const today = TR_DATA.today || trToday();
   return (TR_DATA.rows || []).map(r => { const st = trStage(r, today); return { r, st, gaps: trGaps(r, st), late: trLate(r, st, today), g: trGroupKey(r) }; });
 }
-function trMgrs(){ return [...new Set((TR_DATA.rows || []).map(r => String(r.mgr || '').trim()).filter(Boolean))].sort(); }
-const trMgrOk = r => TR_MGR === 'all' || trN(r.mgr) === trN(TR_MGR === 'me' ? (TR_DATA.me || '') : TR_MGR);
+// ПОКА ТЕСТ: показываем только свои перевозки (столбец «Чья» = твоё имя из списка доступа). Чтобы видеть всех — поставь false
+const TR_ONLY_MINE = true;
+function trMgrs(){ const m = new Map(); (TR_DATA.rows || []).forEach(r => { const s = String(r.mgr || '').trim(); if (s && !m.has(trN(s))) m.set(trN(s), s[0].toUpperCase() + s.slice(1)); }); return [...m.values()].sort(); }
+const trMgrOk = r => TR_ONLY_MINE ? trN(r.mgr) === trN(TR_DATA.me || '') : TR_MGR === 'all' || trN(r.mgr) === trN(TR_MGR === 'me' ? (TR_DATA.me || '') : TR_MGR);
 
 function renderShipments(){
   if (TR_VIEW === 'pay') return renderCarrierPay();
@@ -1427,7 +1429,7 @@ function renderShipments(){
 
   const m = document.getElementById('pMain');
   m.innerHTML = `
-    <div class="ln-chips tr-mgrs">${TR_DATA.me ? mgrChip('me', 'Мои') : ''}${mgrs.filter(x => trN(x) !== trN(TR_DATA.me)).map(x => mgrChip(x, x)).join('')}${mgrChip('all', 'Все')}
+    <div class="ln-chips tr-mgrs">${TR_ONLY_MINE ? '' : (TR_DATA.me ? mgrChip('me', 'Мои') : '') + mgrs.filter(x => trN(x) !== trN(TR_DATA.me)).map(x => mgrChip(x, x)).join('') + mgrChip('all', 'Все')}
       <button type="button" class="ln-chip tr-paybtn" id="trPay">💶 Оплата перевозчикам</button></div>
     <div class="tr-groups">
       ${TR_GROUPS.map(g => `<button type="button" class="tr-grp g-${g.k} ${TR_GRP === g.k ? 'on' : ''}" data-grp="${g.k}"><b>${g.l}</b><span>${cntActive(g.k)}</span></button>`).join('')}
@@ -1470,7 +1472,7 @@ function trCard({ r, st, gaps, late, g }, today){
     const f = (ok, l) => `<span class="tr-flag ${ok ? 'ok' : ''}">${ok ? '✓' : '○'} ${l}</span>`;
     line += `<div class="tr-flags">${f(trInvCli(r), 'счёт клиенту')}${f(trInvCar(r), 'счёт перевозчика')}${trHas(r.payCar) ? `<span class="tr-flag ok" style="background:#EEF2F6;color:var(--steel-dk)">💶 оплата ${trF(r.payCar)}</span>` : ''}</div>`;
   }
-  const sub = [trHas(r.num) ? '№ ' + esc(r.num) : '', esc(r.route || ''), trHas(r.d1) ? 'загр. ' + trF(r.d1) : '', trHas(r.mgr) ? esc(r.mgr) : ''].filter(Boolean).join(' · ');
+  const sub = [trHas(r.num) ? '№ ' + esc(r.num) : '', trHas(r.order) ? 'order ' + esc(r.order) : '', trHas(r.trip) ? 'trip ' + esc(r.trip) : '', esc(r.route || ''), trHas(r.d1) ? 'загр. ' + trF(r.d1) : '', trHas(r.unFact) ? 'выгр. ' + trF(r.unFact) : '', TR_ONLY_MINE ? '' : (trHas(r.mgr) ? esc(r.mgr) : '')].filter(Boolean).join(' · ');
   const btns = st === 'onway' ? `<div class="sp-btns"><button type="button" data-act="loc" data-row="${r.row}">📍 Локация</button><button type="button" data-act="unl" data-row="${r.row}" class="primary">✅ Выгружен</button></div>`
     : st === 'planned' ? `<div class="sp-btns"><button type="button" data-act="loc" data-row="${r.row}">📍 Локация</button></div>` : '';
   return `<div class="tr-card g-${g} st-${st}${late.length ? ' late' : ''}" data-edit="${r.row}">
@@ -1607,7 +1609,7 @@ function trAskLocation(r){
     }catch(e){ btns.forEach(b => b.disabled = false); sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить.</p>'; }
   };
 }
-// Выгружен → в «локация новая» пишется «выгружен 26.10» (как у Маши), прошлая локация уходит в «старую»
+// Выгружен → «Дата выгрузки» + в «локация новая» пишется «выгружен 26.10», прошлая локация уходит в «старую»
 function trAskUnloaded(r){
   const today = TR_DATA.today || trToday();
   const sheet = trSheet(`<div class="sh-head"><div><div class="sh-name">Выгружен</div>
@@ -1620,7 +1622,7 @@ function trAskUnloaded(r){
     const d = sheet.querySelector('#trDate').value || today;
     const nl = `выгружен ${d.slice(8, 10)}.${d.slice(5, 7)}`;
     const btns = sheet.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
-    try{ await trSave(r.row, { locOld: r.locNew || r.locOld || '', locNew: nl }); r.locOld = r.locNew || r.locOld || ''; r.locNew = nl; closeClient(); renderShipments(); }
+    try{ await trSave(r.row, { unFact: d, locOld: r.locNew || r.locOld || '', locNew: nl }); r.unFact = d; r.locOld = r.locNew || r.locOld || ''; r.locNew = nl; closeClient(); renderShipments(); }
     catch(e){ btns.forEach(b => b.disabled = false); sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить.</p>'; }
   };
 }
