@@ -1,4 +1,4 @@
-<!-- money-build 2026-10-15-1130 -->
+<!-- money-build 2026-10-26-1600 -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -464,13 +464,55 @@
   .sp-arch{margin-top:8px;}
   .sp-arch.dim{background:#fff;color:var(--steel-dk);border:1px solid var(--line);}
   .sp-search{font-size:15px;padding:10px 12px;margin:2px 0 10px;}
+  .tr-sum{background:var(--steel-dk);color:#fff;border-radius:16px;padding:12px 14px;margin:10px 0 8px;}
+  .tr-sum-top{display:flex;align-items:center;justify-content:space-between;}
+  .tr-sum-top b{font-size:15px;}
+  .tr-sum-top button{width:34px;height:34px;border-radius:10px;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:16px;}
+  .tr-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:10px 0 8px;}
+  .tr-kpis div{background:rgba(255,255,255,.1);border-radius:10px;padding:7px 6px;text-align:center;}
+  .tr-kpis strong{display:block;font-size:20px;font-variant-numeric:tabular-nums;}
+  .tr-kpis span{display:block;font-size:11px;opacity:.8;}
+  .tr-kpis div.bad{background:#B5483A;} .tr-kpis div.warn{background:#A9761F;}
+  .tr-md{font-size:12.5px;opacity:.9;} .tr-md b{font-variant-numeric:tabular-nums;}
+  .tr-gapn{color:#FFD9A0;font-weight:700;}
+  .tr-card{background:#fff;border:1px solid var(--line-soft);border-left:4px solid #C9D3DC;border-radius:14px;padding:11px 13px;margin-bottom:8px;cursor:pointer;}
+  .tr-card.st-onway{border-left-color:#3F8F5E;} .tr-card.st-planned{border-left-color:#7A8CA3;}
+  .tr-card.st-unloaded{border-left-color:#C08A2C;} .tr-card.st-closed{border-left-color:#C9D3DC;opacity:.8;}
+  .tr-card.late{border-left-color:#B5483A;background:#FFF8F6;}
+  .tr-card em{font-style:normal;color:#A26A1C;}
+  .tr-leg{font-size:13px;color:var(--ink);margin-top:4px;}
+  .tr-leg i{display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;border-radius:50%;background:#EEF2F6;color:var(--steel-dk);font-style:normal;font-weight:700;font-size:11px;margin-right:6px;}
+  .tr-line{font-size:13px;color:var(--ink);margin-top:6px;line-height:1.45;}
+  .tr-loc i{font-style:normal;color:var(--muted);font-size:12px;} .tr-loc.tr-old i{color:#B5483A;font-weight:700;}
+  .tr-flags{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;}
+  .tr-flag{font-size:11.5px;padding:2px 7px;border-radius:7px;background:#FBEEEC;color:#8A3B2E;font-weight:600;}
+  .tr-flag.ok{background:#E3F1E8;color:#2F5A3D;}
+  .tr-late{margin-top:6px;font-size:12.5px;font-weight:700;color:#B5483A;}
+  .tr-gaps{margin-top:6px;font-size:12px;color:#8A3B2E;background:#FBEEEC;border-radius:8px;padding:5px 8px;}
+  .tr-sec{background:#fff;border:1px solid var(--line-soft);border-radius:14px;padding:10px 12px;margin-bottom:10px;}
+  .tr-sec h4{margin:0 0 6px;font-size:12px;font-weight:700;color:var(--muted);}
+  .tr-grid{display:grid;grid-template-columns:1fr;gap:0 10px;}
+  @media (min-width:640px){ .tr-grid{grid-template-columns:1fr 1fr;} }
+  .tr-f label{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;color:var(--muted);margin:8px 0 3px;}
+  .tr-f .inv-in{font-size:16px;padding:10px 11px;margin:0;}
+  .tr-f.miss .inv-in{border-color:#D9826F;background:#FFF6F3;}
+  .tr-f.miss label{color:#B5483A;} .tr-f.miss label::after{content:' • нужно';font-weight:700;}
+  .tr-f small{display:block;font-size:11px;color:var(--muted);margin-top:2px;}
+  .tr-today{border:0;background:none;color:var(--steel);font:600 11.5px 'Manrope',sans-serif;padding:0;cursor:pointer;}
+  .tr-ta{resize:vertical;min-height:60px;}
+  .tr-mdbox b{display:block;font-size:22px;font-variant-numeric:tabular-nums;color:var(--ink);} .tr-mdbox b.neg{color:#B5483A;}
+  .tr-mdbox span{font-size:12px;color:var(--muted);}
+  .tr-savebar{position:sticky;bottom:0;display:grid;grid-template-columns:2fr 1fr;gap:8px;padding:10px 0 4px;background:linear-gradient(transparent, var(--bg) 30%);}
+  .tr-savebar button{height:48px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--steel-dk);font:700 15px 'Manrope',sans-serif;}
+  .tr-savebar button.primary{background:var(--steel-dk);border-color:transparent;color:#fff;}
+  @media (min-width:800px){ .sheet-bg{justify-content:center;} .sheet{max-width:760px;} .wrap{max-width:900px;margin:0 auto;} }
 </style>
 </head>
 <body>
 <header>
   <div class="head-row"><p class="eyebrow" id="today"></p></div>
   <h1 id="pageTitle">Инвест</h1>
-  <p class="ver">версия 2026-10-15-1130</p>
+  <p class="ver">версия 2026-10-26-1600</p>
 </header>
 
 <nav class="tabs">
@@ -1206,12 +1248,76 @@ async function openBroadcast(){
 }
 
 // ============================================================
-// ПЕРЕВОЗКИ — мои перевозки из листа «Перевозки» (создаются ботом из сообщений в Telegram)
-// Воркфлоу Money Shipments API (money-shipments / money-shipments-save)
+// ПЕРЕВОЗКИ — мой учёт перевозок (лист «Перевозки»), ручной ввод с сайта
+// Воркфлоу Money Trips API (money-trips / money-trips-save)
+// Этап считается сам: заявка → в пути → выгружен → закрыт. Пустые нужные поля и просрочки подсвечиваются.
 // ============================================================
-let SH_DATA = null, SH_SEG = 'active', SH_Q = '';
-const SH_ACTIVE = ['заявлено', 'загрузка', 'в пути'];
-const SH_STATUS_LABEL = { 'заявлено':'заявлено', 'загрузка':'загрузка', 'в пути':'в пути', 'выгружен':'выгружен', 'архив':'архив' };
+let TR_DATA = null, TR_SEG = 'onway', TR_Q = '', TR_ONLY_GAPS = false;
+const TR_LABEL = {
+  num:'Номер заявки', orders:'orders', trip:'trip', client:'Клиент', route:'Маршрут',
+  d1:'Погрузка 1 — дата', car1:'Перевозчик 1', truck1:'№ авто 1',
+  d2:'Погрузка 2 — дата', car2:'Перевозчик 2', truck2:'№ авто 2',
+  locOld:'Локация (прошлая)', locNew:'Локация (текущая)', unPlan:'Выгрузка — план', unFact:'Выгрузка — факт',
+  invCarRecv:'Счёт перевозчика — получен', invCarNo:'№ счёта перевозчика', payCar:'Оплата перевозчику — дата',
+  invCliSent:'Счёт клиенту — выслан', invCliNo:'№ счёта клиенту', payCliPlan:'Оплата от клиента — план', payCliFact:'Оплата от клиента — факт',
+  net1:'Нетто 1', net2:'Нетто 2', extra:'Доп. расход', extraNote:'Комментарий к доп. расходу', gross:'Брутто', cur:'Валюта', md:'МД', note:'Комментарий'
+};
+const TR_SHORT = { truck1:'№ авто 1', car1:'перевозчик 1', d1:'дата погрузки', client:'клиент', route:'маршрут', gross:'брутто', net1:'нетто 1',
+  unPlan:'выгрузка план', locNew:'локация', invCarRecv:'счёт перевозчика', invCarNo:'№ счёта перевозчика', invCliSent:'счёт клиенту',
+  invCliNo:'№ счёта клиенту', payCliPlan:'план оплаты клиента', d2:'дата погрузки 2', car2:'перевозчик 2', truck2:'№ авто 2', net2:'нетто 2' };
+const TR_DATES = ['d1','d2','unPlan','unFact','invCarRecv','payCar','invCliSent','payCliPlan','payCliFact'];
+const TR_NUMS = ['net1','net2','extra','gross'];
+const TR_SECTIONS = [
+  ['Основное', ['num','orders','trip','client','route']],
+  ['Плечо 1', ['d1','car1','truck1','net1']],
+  ['Плечо 2 (если через склад)', ['d2','car2','truck2','net2']],
+  ['В пути', ['locNew','locOld','unPlan','unFact']],
+  ['Расчёты с перевозчиком', ['invCarRecv','invCarNo','payCar']],
+  ['Расчёты с клиентом', ['invCliSent','invCliNo','payCliPlan','payCliFact']],
+  ['Деньги', ['gross','extra','extraNote','cur']],
+  ['Прочее', ['note']]
+];
+const trToday = () => new Date(Date.now() + 3*3600*1000).toISOString().slice(0, 10);
+const trDays = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
+const trIso = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+const trF = iso => trIso(iso) ? arFmt(iso) : esc(iso || '');
+const trHas = v => v !== null && v !== undefined && String(v).trim() !== '';
+const trLeg2 = r => ['d2','car2','truck2','net2'].some(k => trHas(r[k]));
+const trMoney = (v, cur) => v === null || v === undefined || v === '' ? '' : `${Number(v).toLocaleString('ru-RU')}${cur ? ' ' + esc(cur) : ''}`;
+function trMd(r){ if (!trHas(r.gross)) return null; return Math.round((r.gross - (r.net1 || 0) - (r.net2 || 0) - (r.extra || 0)) * 100) / 100; }
+
+// Этап перевозки
+function trStage(r, today){
+  if (trHas(r.payCliFact) && trHas(r.payCar)) return 'closed';
+  if (trHas(r.unFact)) return 'unloaded';
+  if ((trIso(r.d1) && r.d1 <= today) || trHas(r.locNew)) return 'onway';
+  return 'planned';
+}
+// Что не заполнено для этого этапа
+function trGaps(r, stage){
+  const need = ['client','route','d1','car1','truck1','gross','net1'];
+  if (stage === 'onway') need.push('unPlan', 'locNew');
+  if (stage === 'unloaded' || stage === 'closed') need.push('invCarRecv','invCarNo','invCliSent','invCliNo','payCliPlan');
+  if (trLeg2(r)) need.push('d2','car2','truck2','net2');
+  return need.filter(k => !trHas(r[k]));
+}
+// Просрочки
+function trLate(r, stage, today){
+  const out = [];
+  if (stage === 'onway' && trIso(r.unPlan) && r.unPlan < today) out.push(`выгрузка просрочена на ${trDays(r.unPlan, today)} дн.`);
+  if ((stage === 'unloaded') && trIso(r.payCliPlan) && r.payCliPlan < today && !trHas(r.payCliFact)) out.push(`оплата клиента просрочена на ${trDays(r.payCliPlan, today)} дн.`);
+  return out;
+}
+// «Брест · 26.10 15:40» → сколько часов назад
+function trLocAge(s){
+  const m = String(s || '').match(/(\d{1,2})\.(\d{1,2})\s+(\d{1,2}):(\d{2})\s*$/); if (!m) return null;
+  const y = new Date().getFullYear();
+  const t = Date.parse(`${y}-${String(m[2]).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}T${String(m[3]).padStart(2,'0')}:${m[4]}:00+03:00`);
+  return isFinite(t) ? (Date.now() - t) / 3600000 : null;
+}
+const trLocText = s => String(s || '').replace(/\s*·\s*\d{1,2}\.\d{1,2}\s+\d{1,2}:\d{2}\s*$/, '');
+function trAgoText(h){ if (h === null) return ''; if (h < 1) return 'только что'; if (h < 24) return `${Math.floor(h)} ч назад`; const d = Math.floor(h / 24); return `${d} ${plural(d,'день','дня','дней')} назад`; }
+
 function shState(title, text){
   const st = document.getElementById('pState');
   if (!title){ st.classList.add('hidden'); return; }
@@ -1220,173 +1326,213 @@ function shState(title, text){
 }
 async function loadShipments(force){
   if (!tgUser){ shState('Откройте через бота', 'Раздел работает только внутри Telegram (телефон, Telegram Desktop или web.telegram.org).'); return; }
-  if (!SH_DATA || force) shState('Загружаю…');
+  if (!TR_DATA || force) shState('Загружаю…');
   try{
-    const r = await fetch(`${API}/money-shipments?init_data=${encodeURIComponent(initData)}&user_id=${tgUser.id}`);
+    const r = await fetch(`${API}/money-trips?init_data=${encodeURIComponent(initData)}&user_id=${tgUser.id}`);
     const raw = await r.json(); const d = Array.isArray(raw) ? raw[0] : raw;
     if (!d || d.ok === false){ shState('Нет доступа', 'Раздел только для владельца бота.'); return; }
-    SH_DATA = d; shState('');
+    TR_DATA = d; shState('');
     document.getElementById('pMain').classList.remove('hidden');
     renderShipments();
   }catch(e){
-    if (!SH_DATA) shState('Нет связи с сервисом', 'Включите воркфлоу <b style="display:inline;font:inherit;color:inherit">Money Shipments API</b> в n8n.');
+    if (!TR_DATA) shState('Нет связи с сервисом', 'Включите воркфлоу <b style="display:inline;font:inherit;color:inherit">Money Trips API</b> в n8n.');
   }
 }
-async function shSave(body){
-  const r = await fetch(`${API}/money-shipments-save`, { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ init_data:initData, user_id:tgUser?.id, ...body }) });
+async function trSave(action, row, data){
+  const r = await fetch(`${API}/money-trips-save`, { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ init_data:initData, user_id:tgUser?.id, action, row, data }) });
   const raw = await r.json(); const d = Array.isArray(raw) ? raw[0] : raw;
   if (!d || d.ok === false) throw new Error((d && d.reason) || 'fail');
-  return d;
 }
-const shDays = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
-function shAgo(stamp){
-  const m = String(stamp || '').match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/); if (!m) return '';
-  const t = Date.parse(`${m[1]}T${m[2]}:${m[3]}:00+03:00`); const h = (Date.now() - t) / 3600000;
-  if (h < 1) return 'только что'; if (h < 24) return `${Math.floor(h)} ч назад`;
-  const dd = Math.floor(h / 24); return `${dd} ${plural(dd,'день','дня','дней')} назад`;
-}
-const shHours = stamp => { const m = String(stamp || '').match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}):(\d{2})/); return m ? (Date.now() - Date.parse(`${m[1]}T${m[2]}:${m[3]}:00+03:00`)) / 3600000 : Infinity; };
-const shMoney = r => (r.price_client != null || r.price_carrier != null)
-  ? `${r.price_client ?? '?'}/${r.price_carrier ?? '?'}${r.currency ? ' ' + esc(r.currency) : ''}${r.margin != null ? ` · маржа <b>${r.margin}</b>` : ''}` : '';
-function shWhen(r, today){
-  if (!r.date) return 'дата погрузки не указана';
-  const d = shDays(today, r.date);
-  return `погрузка ${arFmt(r.date)}${d === 0 ? ' · сегодня' : d === 1 ? ' · завтра' : d > 1 ? ` · через ${d} ${plural(d,'день','дня','дней')}` : ` · ${-d} ${plural(-d,'день','дня','дней')} назад`}`;
-}
+
 function renderShipments(){
-  const rows = SH_DATA.rows || [], today = SH_DATA.today;
-  const active = rows.filter(r => SH_ACTIVE.includes(r.status));
-  const unl = rows.filter(r => r.status === 'выгружен');
-  const arch = rows.filter(r => r.status === 'архив');
-  const onWay = active.filter(r => r.status === 'в пути').length;
-  const noInv = unl.filter(r => !r.inv_carrier || !r.inv_client).length;
-  const ym = today.slice(0, 7);
-  const marginMonth = rows.filter(r => (r.date || '').slice(0, 7) === ym && r.margin != null).reduce((s, r) => s + r.margin, 0);
-  const seg = (k, l, n) => `<button type="button" class="ln-chip ${SH_SEG === k ? 'on' : ''}" data-seg="${k}">${l}${n ? ' · ' + n : ''}</button>`;
+  const today = TR_DATA.today || trToday();
+  const rows = (TR_DATA.rows || []).map(r => { const st = trStage(r, today); return { r, st, gaps: trGaps(r, st), late: trLate(r, st, today) }; });
+  const by = s => rows.filter(x => x.st === s);
+  const cnt = { planned: by('planned').length, onway: by('onway').length, unloaded: by('unloaded').length, closed: by('closed').length };
+  const lateN = rows.filter(x => x.late.length).length;
+  const noInv = rows.filter(x => x.st === 'unloaded' && (!trHas(x.r.invCliSent) || !trHas(x.r.invCarRecv))).length;
+  const waitPay = rows.filter(x => x.st === 'unloaded' && trHas(x.r.invCliSent) && !trHas(x.r.payCliFact)).length;
+  const gapsN = rows.filter(x => x.st !== 'closed' && x.gaps.length).length;
+  // МД за текущий месяц по дате погрузки, по валютам
+  const ym = today.slice(0, 7), mdBy = {};
+  rows.forEach(({ r }) => { const md = trHas(r.md) ? Number(r.md) : trMd(r); if (md !== null && String(r.d1 || '').slice(0, 7) === ym) { const c = r.cur || '€'; mdBy[c] = (mdBy[c] || 0) + md; } });
+  const mdText = Object.entries(mdBy).map(([c, v]) => `${Math.round(v).toLocaleString('ru-RU')} ${esc(c)}`).join(' + ') || '0';
 
-  let list = SH_SEG === 'active' ? active : SH_SEG === 'unloaded' ? unl : arch;
-  if (SH_SEG === 'active') list = [...list].sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999') || a.id - b.id);
-  if (SH_Q){ const q = SH_Q.toLowerCase(); list = list.filter(r => [r.id, r.order, r.client, r.route, r.carrier, r.truck, r.driver, r.location].join(' ').toLowerCase().includes(q)); }
+  let list = TR_SEG === 'all' ? rows : by(TR_SEG);
+  if (TR_ONLY_GAPS) list = list.filter(x => x.gaps.length || x.late.length);
+  if (TR_Q){ const q = TR_Q.toLowerCase(); list = list.filter(({ r }) => [r.num, r.orders, r.trip, r.client, r.route, r.car1, r.truck1, r.car2, r.truck2, r.locNew, r.invCarNo, r.invCliNo, r.note].join(' ').toLowerCase().includes(q)); }
+  const key = { planned: x => x.r.d1 || '9999', onway: x => x.r.d1 || '0000', unloaded: x => x.r.unFact || '', closed: x => x.r.payCliFact || '', all: x => x.r.d1 || '' };
+  list = [...list].sort((a, b) => { const ka = key[TR_SEG](a), kb = key[TR_SEG](b); return TR_SEG === 'planned' || TR_SEG === 'onway' ? ka.localeCompare(kb) : kb.localeCompare(ka); });
 
-  const card = r => {
-    const stale = r.status === 'в пути' && shHours(r.location_at) > 24;
-    const base = `
-      <div class="sp-top"><b>${esc(r.route || '—')}</b><span>${r.order ? 'заказ ' + esc(r.order) + ' · ' : ''}#${r.id}</span></div>
-      <div class="ar-sub">${[r.client, r.carrier].filter(Boolean).map(esc).join(' · ') || '—'}</div>
-      <div class="ar-sub">${r.truck || r.driver ? [r.truck, r.driver].filter(Boolean).map(esc).join(' · ') : '<i class="sp-miss">авто не указано</i>'}</div>`;
-    if (SH_SEG === 'active') return `<div class="sp-card">
-      ${base}
-      <div class="ar-sub">${shWhen(r, today)} · <span class="sp-st st-${r.status.replace(' ', '')}">${esc(SH_STATUS_LABEL[r.status] || r.status)}</span></div>
-      <div class="sp-loc${stale ? ' stale' : ''}">📍 ${r.location ? `${esc(r.location)} <i>· ${shAgo(r.location_at)}</i>` : '<i>локация не указана</i>'}</div>
-      ${shMoney(r) ? `<div class="ar-sub">${shMoney(r)}</div>` : ''}
-      <div class="sp-btns">
-        <button type="button" data-loc="${r.id}">📍 Локация</button>
-        <button type="button" data-unl="${r.id}" class="primary">✅ Выгружен</button>
-        <button type="button" data-more="${r.id}" aria-label="Статус">⋯</button>
-      </div></div>`;
-    if (SH_SEG === 'unloaded') { const done = r.inv_carrier && r.inv_client; return `<div class="sp-card">
-      ${base}
-      <div class="ar-sub">выгружен ${r.unloaded ? arFmt(r.unloaded) : '—'}${shMoney(r) ? ' · ' + shMoney(r) : ''}</div>
-      <div class="sp-btns">
-        <button type="button" data-ic="${r.id}" class="${r.inv_carrier ? 'ok' : ''}">${r.inv_carrier ? '✓' : '○'} Счёт перевозчика</button>
-        <button type="button" data-icl="${r.id}" class="${r.inv_client ? 'ok' : ''}">${r.inv_client ? '✓' : '○'} Счёт клиенту</button>
-      </div>
-      <button type="button" class="ln-wide sp-arch${done ? '' : ' dim'}" data-arch="${r.id}">В архив</button></div>`; }
-    return `<div class="sp-card arch">${base}
-      <div class="ar-sub">${r.date ? 'погрузка ' + arFmt(r.date) : ''}${r.unloaded ? ' · выгружен ' + arFmt(r.unloaded) : ''}${shMoney(r) ? ' · ' + shMoney(r) : ''}</div>
-      <div class="sp-btns"><button type="button" data-back="${r.id}">↩ Вернуть в выгруженные</button></div></div>`;
-  };
-
+  const chip = (k, l, n) => `<button type="button" class="ln-chip ${TR_SEG === k ? 'on' : ''}" data-seg="${k}">${l}${n !== undefined ? ' · ' + n : ''}</button>`;
   const m = document.getElementById('pMain');
   m.innerHTML = `
-    <div class="or-sum"><div><b>Мои перевозки</b><span>в пути ${onWay} · ждут счетов ${noInv} · маржа за месяц ${marginMonth.toLocaleString('ru-RU')}</span></div>
-      <strong>${active.length}</strong><button type="button" class="or-refresh" aria-label="Обновить">↻</button></div>
-    <div class="ln-chips">${seg('active','Активные',active.length)}${seg('unloaded','Выгружены',unl.length)}${seg('archive','Архив',arch.length)}</div>
-    <input class="inv-in sp-search" id="spSearch" type="search" placeholder="Поиск: клиент, авто, маршрут, заказ" value="${esc(SH_Q)}">
-    ${list.length ? list.map(card).join('') : `<div class="inv-plan">${SH_SEG === 'active' ? 'Активных перевозок нет. Напиши боту задание — появится здесь.' : SH_SEG === 'unloaded' ? 'Нет выгруженных без архива.' : 'Архив пуст.'}</div>`}`;
+    <div class="tr-sum">
+      <div class="tr-sum-top"><b>Мои перевозки</b><button type="button" class="or-refresh" aria-label="Обновить">↻</button></div>
+      <div class="tr-kpis">
+        <div><strong>${cnt.onway}</strong><span>в пути</span></div>
+        <div class="${lateN ? 'bad' : ''}"><strong>${lateN}</strong><span>просрочено</span></div>
+        <div class="${noInv ? 'warn' : ''}"><strong>${noInv}</strong><span>без счёта</span></div>
+        <div><strong>${waitPay}</strong><span>ждём оплату</span></div>
+      </div>
+      <div class="tr-md">МД за месяц: <b>${mdText}</b>${gapsN ? ` · <span class="tr-gapn">${gapsN} с пропусками</span>` : ''}</div>
+    </div>
+    <button type="button" class="ln-wide" id="trNew" style="margin:0 0 10px">＋ Новая перевозка</button>
+    <div class="ln-chips">${chip('planned','Заявки',cnt.planned)}${chip('onway','В пути',cnt.onway)}${chip('unloaded','Выгружены',cnt.unloaded)}${chip('closed','Закрыты',cnt.closed)}${chip('all','Все')}
+      <button type="button" class="ln-chip ${TR_ONLY_GAPS ? 'on' : ''}" id="trGaps">⚠ только с пропусками</button></div>
+    <input class="inv-in sp-search" id="trSearch" type="search" placeholder="Поиск: заявка, клиент, авто, маршрут, счёт" value="${esc(TR_Q)}">
+    ${list.length ? list.map(x => trCard(x, today)).join('') : '<div class="inv-plan">Здесь пока пусто.</div>'}`;
 
   m.querySelector('.or-refresh').onclick = () => loadShipments(true);
-  m.querySelectorAll('[data-seg]').forEach(b => b.onclick = () => { SH_SEG = b.dataset.seg; renderShipments(); });
-  const s = m.querySelector('#spSearch');
-  s.oninput = () => { SH_Q = s.value; const pos = s.selectionStart; renderShipments(); const n = document.getElementById('spSearch'); n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} };
-  const byId = id => rows.find(r => r.id === +id);
-  m.querySelectorAll('[data-loc]').forEach(b => b.onclick = () => shAskLocation(byId(b.dataset.loc)));
-  m.querySelectorAll('[data-unl]').forEach(b => b.onclick = () => shAskUnloaded(byId(b.dataset.unl)));
-  m.querySelectorAll('[data-more]').forEach(b => b.onclick = () => shAskStatus(byId(b.dataset.more)));
-  m.querySelectorAll('[data-ic]').forEach(b => b.onclick = () => shToggle(byId(b.dataset.ic), 'inv_carrier', b));
-  m.querySelectorAll('[data-icl]').forEach(b => b.onclick = () => shToggle(byId(b.dataset.icl), 'inv_client', b));
-  m.querySelectorAll('[data-arch]').forEach(b => b.onclick = () => shSetStatus(byId(b.dataset.arch), 'архив', b));
-  m.querySelectorAll('[data-back]').forEach(b => b.onclick = () => shSetStatus(byId(b.dataset.back), 'выгружен', b));
+  m.querySelector('#trNew').onclick = () => trEdit(null);
+  m.querySelector('#trGaps').onclick = () => { TR_ONLY_GAPS = !TR_ONLY_GAPS; renderShipments(); };
+  m.querySelectorAll('[data-seg]').forEach(b => b.onclick = () => { TR_SEG = b.dataset.seg; renderShipments(); });
+  const s = m.querySelector('#trSearch');
+  s.oninput = () => { TR_Q = s.value; const p = s.selectionStart; renderShipments(); const n = document.getElementById('trSearch'); n.focus(); try{ n.setSelectionRange(p, p); }catch(e){} };
+  const byRow = n => (TR_DATA.rows || []).find(r => r.row === +n);
+  m.querySelectorAll('[data-edit]').forEach(el => el.onclick = e => { if (e.target.closest('button[data-act]')) return; trEdit(byRow(el.dataset.edit)); });
+  m.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => {
+    const r = byRow(b.dataset.row);
+    if (b.dataset.act === 'loc') trAskLocation(r);
+    if (b.dataset.act === 'unl') trAskUnloaded(r);
+  });
 }
-async function shToggle(r, field, btn){
-  const val = !r[field]; btn.disabled = true;
-  try{ await shSave({ action: field, id: r.id, value: val }); r[field] = val ? 'да, ' + SH_DATA.today : ''; renderShipments(); }
-  catch(e){ btn.disabled = false; alert('Не удалось сохранить'); }
+
+function trCard({ r, st, gaps, late }, today){
+  const leg = (n, d, car, truck, net) => (trHas(d) || trHas(car) || trHas(truck) || trHas(net))
+    ? `<div class="tr-leg"><i>${n}</i>${[trHas(d) ? trF(d) : '<em>дата?</em>', trHas(car) ? esc(car) : '<em>перевозчик?</em>', trHas(truck) ? esc(truck) : '<em>№ авто?</em>'].join(' · ')}${trHas(net) ? ` · ${trMoney(net, r.cur)}` : ''}</div>` : '';
+  let line = '';
+  if (st === 'planned') { const d = trIso(r.d1) ? trDays(today, r.d1) : null; line = d === null ? 'дата погрузки не указана' : d === 0 ? 'погрузка сегодня' : d === 1 ? 'погрузка завтра' : `погрузка через ${d} ${plural(d,'день','дня','дней')}`; }
+  if (st === 'onway') {
+    const age = trLocAge(r.locNew);
+    line = `<span class="tr-loc ${age !== null && age > 24 ? "tr-old" : ""}">📍 ${trHas(r.locNew) ? esc(trLocText(r.locNew)) + (age !== null ? ` <i>· ${trAgoText(age)}</i>` : '') : '<em>локация не указана</em>'}</span>`
+         + `<br>выгрузка план: ${trHas(r.unPlan) ? trF(r.unPlan) : '<em>не указана</em>'}`;
+  }
+  if (st === 'unloaded' || st === 'closed') {
+    const f = (ok, l) => `<span class="tr-flag ${ok ? 'ok' : ''}">${ok ? '✓' : '○'} ${l}</span>`;
+    line = `выгружен ${trF(r.unFact)}<div class="tr-flags">${f(trHas(r.invCarRecv), 'счёт перевозчика')}${f(trHas(r.payCar), 'оплата перевозчику')}${f(trHas(r.invCliSent), 'счёт клиенту')}${f(trHas(r.payCliFact), 'оплата клиента' + (!trHas(r.payCliFact) && trHas(r.payCliPlan) ? ' · план ' + trF(r.payCliPlan) : ''))}</div>`;
+  }
+  const md = trHas(r.md) ? Number(r.md) : trMd(r);
+  const money = [trHas(r.gross) ? 'брутто ' + trMoney(r.gross, r.cur) : '', md !== null ? `МД <b>${trMoney(md, r.cur)}</b>` : ''].filter(Boolean).join(' · ');
+  const btns = st === 'onway' ? `<div class="sp-btns"><button type="button" data-act="loc" data-row="${r.row}">📍 Локация</button><button type="button" data-act="unl" data-row="${r.row}" class="primary">✅ Выгружен</button></div>` : '';
+  return `<div class="tr-card st-${st}${late.length ? ' late' : ''}" data-edit="${r.row}">
+    <div class="sp-top"><b>${esc(r.route || 'Маршрут не указан')}</b><span>${trHas(r.num) ? '№ ' + esc(r.num) : 'стр. ' + r.row}</span></div>
+    <div class="ar-sub">${[r.client, r.orders, r.trip].filter(trHas).map(esc).join(' · ') || '<em>клиент?</em>'}</div>
+    ${leg('1', r.d1, r.car1, r.truck1, r.net1)}${trLeg2(r) ? leg('2', r.d2, r.car2, r.truck2, r.net2) : ''}
+    <div class="tr-line">${line}</div>
+    ${money ? `<div class="ar-sub">${money}</div>` : ''}
+    ${late.length ? `<div class="tr-late">⏰ ${late.join(' · ')}</div>` : ''}
+    ${gaps.length ? `<div class="tr-gaps">Не заполнено: ${gaps.map(k => TR_SHORT[k] || TR_LABEL[k]).join(', ')}</div>` : ''}
+    ${btns}
+  </div>`;
 }
-async function shSetStatus(r, status, btn){
-  if (status === 'удалено' && !confirm(`Удалить перевозку #${r.id}?`)) return;
-  if (btn) btn.disabled = true;
-  try{
-    await shSave({ action:'status', id:r.id, status });
-    if (status === 'удалено') SH_DATA.rows = SH_DATA.rows.filter(x => x !== r); else r.status = status;
-    closeClient(); renderShipments();
-  }catch(e){ if (btn) btn.disabled = false; alert('Не удалось сохранить'); }
-}
-function shSheet(html){
+
+function trSheet(html){
   const sheet = document.getElementById('sheet');
   sheet.innerHTML = html; sheet.scrollTop = 0;
-  sheet.querySelector('.sh-x').onclick = closeClient;
+  sheet.querySelectorAll('.sh-x, [data-close]').forEach(b => b.onclick = closeClient);
   document.getElementById('sheetBg').classList.remove('hidden');
   return sheet;
 }
-const shHead = (r, title) => `<div class="sh-head"><div><div class="sh-name">${title}</div>
-  <div class="sh-phone">#${r.id} · ${esc(r.route || '')}${r.truck ? ' · ' + esc(r.truck) : ''}</div></div>
-  <button class="sh-x" type="button" aria-label="Закрыть">×</button></div>`;
-function shAskLocation(r){
-  const sheet = shSheet(`${shHead(r, 'Где машина')}
-    <label class="f" for="spLoc">Город / граница / комментарий</label>
-    <input class="inv-in" id="spLoc" type="text" placeholder="например: граница Верхний Ларс" value="">
-    ${r.location ? `<p class="sh-note">Было: ${esc(r.location)} · ${shAgo(r.location_at)}</p>` : ''}
-    <div id="spErr"></div>
-    <div class="bc-actions" style="margin-top:10px"><button type="button" id="spOk" class="primary">Сохранить</button><button type="button" id="spNo">Отмена</button></div>`);
-  const inp = sheet.querySelector('#spLoc'); setTimeout(() => inp.focus(), 150);
-  sheet.querySelector('#spNo').onclick = closeClient;
-  sheet.querySelector('#spOk').onclick = async () => {
-    const v = inp.value.trim(); if (!v){ inp.focus(); return; }
+
+// Полная форма: новая перевозка или правка
+function trEdit(r){
+  const isNew = !r;
+  const v = r ? { ...r } : { cur: '€' };
+  const today = TR_DATA.today || trToday();
+  const st = isNew ? 'planned' : trStage(v, today);
+  const gaps = new Set(trGaps(v, st));
+  const uniq = k => [...new Set((TR_DATA.rows || []).map(x => x[k]).filter(trHas))].sort();
+  const lists = { client: uniq('client'), route: uniq('route'), car1: [...new Set([...uniq('car1'), ...uniq('car2')])], car2: null, cur: ['€', '$', '₽', 'TL'] };
+  lists.car2 = lists.car1;
+  const field = k => {
+    const val = v[k] ?? '';
+    const miss = gaps.has(k) ? ' miss' : '';
+    if (TR_DATES.includes(k)) return `<div class="tr-f${miss}"><label for="tf_${k}">${TR_LABEL[k]}<button type="button" class="tr-today" data-today="${k}">сегодня</button></label>
+      <input class="inv-in" id="tf_${k}" data-k="${k}" type="date" value="${trIso(val) ? val : ''}">${!trIso(val) && trHas(val) ? `<small>в таблице: ${esc(val)}</small>` : ''}</div>`;
+    if (k === 'note' || k === 'extraNote') return `<div class="tr-f${miss}"><label for="tf_${k}">${TR_LABEL[k]}</label><textarea class="inv-in tr-ta" id="tf_${k}" data-k="${k}" rows="2">${esc(val)}</textarea></div>`;
+    const dl = lists[k] ? `list="tl_${k}"` : '';
+    const dlHtml = lists[k] ? `<datalist id="tl_${k}">${lists[k].map(x => `<option value="${esc(x)}"></option>`).join('')}</datalist>` : '';
+    return `<div class="tr-f${miss}"><label for="tf_${k}">${TR_LABEL[k]}</label><input class="inv-in" id="tf_${k}" data-k="${k}" ${TR_NUMS.includes(k) ? 'type="number" inputmode="decimal" step="any"' : 'type="text"'} ${dl} value="${esc(val)}" autocomplete="off">${dlHtml}</div>`;
+  };
+  const sheet = trSheet(`
+    <div class="sh-head"><div><div class="sh-name">${isNew ? 'Новая перевозка' : esc(v.route || 'Перевозка')}</div>
+      <div class="sh-phone">${isNew ? 'заполни что знаешь — остальное потом' : `${trHas(v.num) ? '№ ' + esc(v.num) + ' · ' : ''}${{ planned:'заявка', onway:'в пути', unloaded:'выгружен', closed:'закрыт' }[st]}${gaps.size ? ` · не заполнено ${gaps.size}` : ''}`}</div></div>
+      <button class="sh-x" type="button" aria-label="Закрыть">×</button></div>
+    ${TR_SECTIONS.map(([title, keys]) => `<div class="tr-sec"><h4>${title}</h4><div class="tr-grid">${keys.map(field).join('')}</div></div>`).join('')}
+    <div class="tr-sec"><h4>МД (считается сам)</h4><div class="tr-mdbox" id="trMd"></div></div>
+    <div id="trErr"></div>
+    <div class="tr-savebar"><button type="button" id="trOk" class="primary">${isNew ? 'Создать' : 'Сохранить'}</button><button type="button" data-close>Отмена</button></div>`);
+
+  const get = k => { const el = sheet.querySelector(`[data-k="${k}"]`); return el ? el.value.trim() : ''; };
+  const numv = k => { const x = parseFloat(get(k).replace(',', '.')); return isFinite(x) ? x : null; };
+  const paintMd = () => {
+    const g = numv('gross'); const box = sheet.querySelector('#trMd');
+    if (g === null){ box.innerHTML = '<span class="sh-note" style="margin:0">впиши брутто и нетто</span>'; return; }
+    const md = Math.round((g - (numv('net1') || 0) - (numv('net2') || 0) - (numv('extra') || 0)) * 100) / 100;
+    box.innerHTML = `<b class="${md < 0 ? 'neg' : ''}">${md.toLocaleString('ru-RU')} ${esc(get('cur') || '€')}</b><span>брутто ${g} − нетто ${(numv('net1') || 0) + (numv('net2') || 0)} − доп. ${numv('extra') || 0}</span>`;
+  };
+  sheet.querySelectorAll('[data-k]').forEach(el => el.addEventListener('input', () => { el.closest('.tr-f')?.classList.toggle('miss', false); paintMd(); }));
+  sheet.querySelectorAll('[data-today]').forEach(b => b.onclick = () => { const el = sheet.querySelector(`[data-k="${b.dataset.today}"]`); el.value = today; el.dispatchEvent(new Event('input')); });
+  paintMd();
+
+  sheet.querySelector('#trOk').onclick = async () => {
+    const data = {};
+    sheet.querySelectorAll('[data-k]').forEach(el => {
+      const k = el.dataset.k, nv = el.value.trim();
+      const ov = r ? (r[k] === null || r[k] === undefined ? '' : String(r[k])) : '';
+      if (TR_DATES.includes(k) && !nv && ov && !trIso(ov)) return;     // дату в странном формате не трогаем, если поле не меняли
+      if (isNew ? nv !== '' : nv !== ov) data[k] = nv;
+    });
+    if (!Object.keys(data).length){ closeClient(); return; }
+    if (isNew && !data.route && !data.client && !data.num){ sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Впиши хотя бы маршрут, клиента или номер заявки.</p>'; return; }
     const btns = sheet.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
     try{
-      const setOnWay = r.status !== 'в пути';
-      await shSave({ action:'location', id:r.id, location:v, set_on_way:setOnWay });
-      r.location = v; r.location_at = new Date(Date.now() + 3*3600*1000).toISOString().replace('T', ' ').slice(0, 16);
-      if (setOnWay) r.status = 'в пути';
-      closeClient(); renderShipments();
-    }catch(e){ btns.forEach(b => b.disabled = false); sheet.querySelector('#spErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить. Проверьте воркфлоу Money Shipments API.</p>'; }
+      await trSave(isNew ? 'create' : 'update', r ? r.row : null, data);
+      try{ tg?.HapticFeedback?.notificationOccurred('success'); }catch(e){}
+      closeClient(); await loadShipments(true);
+    }catch(e){
+      btns.forEach(b => b.disabled = false);
+      sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить. Проверьте воркфлоу Money Trips API и названия колонок в листе «Перевозки».</p>';
+    }
   };
 }
-function shAskUnloaded(r){
-  const sheet = shSheet(`${shHead(r, 'Выгружен')}
-    <label class="f" for="spDate">Дата выгрузки</label>
-    <input class="inv-in" id="spDate" type="date" value="${SH_DATA.today}">
-    <div id="spErr"></div>
-    <div class="bc-actions" style="margin-top:10px"><button type="button" id="spOk" class="primary">Отметить</button><button type="button" id="spNo">Отмена</button></div>`);
-  sheet.querySelector('#spNo').onclick = closeClient;
-  sheet.querySelector('#spOk').onclick = async () => {
-    const dt = sheet.querySelector('#spDate').value || SH_DATA.today;
+
+function trAskLocation(r){
+  const sheet = trSheet(`<div class="sh-head"><div><div class="sh-name">Где машина</div>
+      <div class="sh-phone">${esc(r.route || '')}${r.truck1 ? ' · ' + esc(r.truck1) : ''}</div></div><button class="sh-x" type="button" aria-label="Закрыть">×</button></div>
+    <label class="f" for="trLoc">Город / граница / комментарий</label>
+    <input class="inv-in" id="trLoc" type="text" placeholder="например: граница Верхний Ларс">
+    ${trHas(r.locNew) ? `<p class="sh-note">Сейчас: ${esc(r.locNew)} — станет «прошлой»</p>` : ''}
+    <div id="trErr"></div>
+    <div class="bc-actions" style="margin-top:10px"><button type="button" id="trOk" class="primary">Сохранить</button><button type="button" data-close>Отмена</button></div>`);
+  const inp = sheet.querySelector('#trLoc'); setTimeout(() => inp.focus(), 150);
+  sheet.querySelector('#trOk').onclick = async () => {
+    const t = inp.value.trim(); if (!t){ inp.focus(); return; }
+    const now = new Date(Date.now() + 3*3600*1000);
+    const stamp = `${String(now.getUTCDate()).padStart(2,'0')}.${String(now.getUTCMonth()+1).padStart(2,'0')} ${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}`;
     const btns = sheet.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
-    try{ await shSave({ action:'unloaded', id:r.id, date:dt }); r.status = 'выгружен'; r.unloaded = dt; closeClient(); renderShipments(); }
-    catch(e){ btns.forEach(b => b.disabled = false); sheet.querySelector('#spErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить.</p>'; }
+    try{
+      await trSave('update', r.row, { locOld: r.locNew || '', locNew: `${t} · ${stamp}` });
+      r.locOld = r.locNew || ''; r.locNew = `${t} · ${stamp}`; closeClient(); renderShipments();
+    }catch(e){ btns.forEach(b => b.disabled = false); sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить.</p>'; }
   };
 }
-function shAskStatus(r){
-  const opts = ['заявлено', 'загрузка', 'в пути'];
-  const sheet = shSheet(`${shHead(r, 'Статус')}
-    <div class="ln-chips">${opts.map(s => `<button type="button" class="ln-chip ${r.status === s ? 'on' : ''}" data-st="${s}">${s}</button>`).join('')}</div>
-    <button type="button" class="ln-wide" id="spArch" style="background:#fff;color:var(--steel-dk);border:1px solid var(--line)">В архив без выгрузки</button>
-    <button type="button" class="danger-btn" id="spDel">Удалить перевозку</button>`);
-  sheet.querySelectorAll('[data-st]').forEach(b => b.onclick = () => shSetStatus(r, b.dataset.st, b));
-  sheet.querySelector('#spArch').onclick = e => shSetStatus(r, 'архив', e.target);
-  sheet.querySelector('#spDel').onclick = e => shSetStatus(r, 'удалено', e.target);
+function trAskUnloaded(r){
+  const today = TR_DATA.today || trToday();
+  const sheet = trSheet(`<div class="sh-head"><div><div class="sh-name">Выгружен</div>
+      <div class="sh-phone">${esc(r.route || '')}${r.truck1 ? ' · ' + esc(r.truck1) : ''}</div></div><button class="sh-x" type="button" aria-label="Закрыть">×</button></div>
+    <label class="f" for="trDate">Дата выгрузки</label>
+    <input class="inv-in" id="trDate" type="date" value="${today}">
+    <div id="trErr"></div>
+    <div class="bc-actions" style="margin-top:10px"><button type="button" id="trOk" class="primary">Отметить</button><button type="button" data-close>Отмена</button></div>`);
+  sheet.querySelector('#trOk').onclick = async () => {
+    const d = sheet.querySelector('#trDate').value || today;
+    const btns = sheet.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
+    try{ await trSave('update', r.row, { unFact: d }); r.unFact = d; closeClient(); renderShipments(); }
+    catch(e){ btns.forEach(b => b.disabled = false); sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить.</p>'; }
+  };
 }
 
 
