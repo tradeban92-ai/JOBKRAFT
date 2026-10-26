@@ -507,6 +507,13 @@
   .tr-head > b{font-weight:800;}
   .tr-st{margin-left:auto;flex:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:7px;background:#EEF2F6;color:var(--steel-dk);}
   .tr-st.st-onway{background:#E3F1E8;color:#2F5A3D;} .tr-st.st-unloaded{background:#FBF1DF;color:#8A5B12;} .tr-st.st-closed{background:#F1F3F5;color:var(--muted);}
+  .tr-paybtn{margin-left:auto;background:#FBF1DF;border-color:#E9CF9F;color:#8A5B12;}
+  .tr-paytop{display:flex;align-items:center;gap:10px;margin:10px 0;} .tr-paytop b{flex:1;font-size:16px;color:var(--ink);} .tr-paytop .g-refresh{width:44px;height:40px;}
+  .tr-paykpi{margin:0 0 12px;} .tr-paykpi div{background:var(--steel-dk);color:#fff;}
+  .tr-payh{font-size:13px;font-weight:800;color:var(--steel-dk);margin:14px 2px 8px;text-transform:uppercase;letter-spacing:.02em;}
+  .tr-payh.bad{color:#B5483A;} .tr-payh.warn{color:#A9761F;}
+  .tr-check{display:flex !important;justify-content:flex-start !important;gap:10px;font-size:14px !important;color:var(--ink) !important;cursor:pointer;}
+  .tr-check input{width:22px;height:22px;margin:0;flex:none;padding:0;-webkit-appearance:auto;appearance:auto;accent-color:#3F8F5E;border-radius:4px;}
   .tr-sec{background:#fff;border:1px solid var(--line-soft);border-radius:14px;padding:10px 12px;margin-bottom:10px;}
   .tr-sec h4{margin:0 0 6px;font-size:12px;font-weight:700;color:var(--muted);}
   .tr-grid{display:grid;grid-template-columns:1fr;gap:0 10px;}
@@ -530,7 +537,7 @@
 <header>
   <div class="head-row"><p class="eyebrow" id="today"></p></div>
   <h1 id="pageTitle">Инвест</h1>
-  <p class="ver">версия 2026-10-26-2100</p>
+  <p class="ver">версия 2026-10-26-2300</p>
 </header>
 
 <nav class="tabs">
@@ -1270,76 +1277,52 @@ async function openBroadcast(){
 // Воркфлоу Money Trips API (money-trips / money-trips-save)
 // Этап считается сам: заявка → в пути → выгружен → закрыт. Пустые нужные поля и просрочки подсвечиваются.
 // ============================================================
-let TR_DATA = null, TR_SEG = 'onway', TR_Q = '', TR_ONLY_GAPS = false;
-const TR_LABEL = {
-  num:'Номер заявки', orders:'orders', trip:'trip', client:'Клиент', route:'Маршрут',
-  d1:'Погрузка 1 — дата', car1:'Перевозчик 1', truck1:'№ авто 1',
-  d2:'Погрузка 2 — дата', car2:'Перевозчик 2', truck2:'№ авто 2',
-  locOld:'Локация (прошлая)', locNew:'Локация (текущая)', unPlan:'Выгрузка — план', unFact:'Выгрузка — факт',
-  invCarRecv:'Счёт перевозчика — получен', invCarNo:'№ счёта перевозчика', payCar:'Оплата перевозчику — дата',
-  invCliSent:'Счёт клиенту — выслан', invCliNo:'№ счёта клиенту', payCliPlan:'Оплата от клиента — план', payCliFact:'Оплата от клиента — факт',
-  net1:'Нетто 1', net2:'Нетто 2', extra:'Доп. расход', extraNote:'Комментарий к доп. расходу', gross:'Брутто', cur:'Валюта', md:'МД', note:'Комментарий'
-};
-const TR_SHORT = { truck1:'№ авто 1', car1:'перевозчик 1', d1:'дата погрузки', client:'клиент', route:'маршрут', gross:'брутто', net1:'нетто 1',
-  unPlan:'выгрузка план', locNew:'локация', invCarRecv:'счёт перевозчика', invCarNo:'№ счёта перевозчика', invCliSent:'счёт клиенту',
-  invCliNo:'№ счёта клиенту', payCliPlan:'план оплаты клиента', d2:'дата погрузки 2', car2:'перевозчик 2', truck2:'№ авто 2', net2:'нетто 2' };
-const TR_DATES = ['d1','d2','unPlan','unFact','invCarRecv','payCar','invCliSent','payCliPlan','payCliFact'];
-const TR_NUMS = ['net1','net2','extra','gross'];
+let TR_DATA = null;
+// ===== ПЕРЕВОЗКИ — таблица Маши (общая). Ключи приходят из воркфлоу Money Trips API =====
+// req — галочка «Заявка» (заявка перевозчику отправлена), mgr — «Чья», client, route, num — «Номер», truck — «Машина»,
+// car — перевозчик, d1 — дата загрузки, locOld / locNew — локации, inv — «Счет», invNo — номер счёта, payCar — «оплата» (дата платежа перевозчику), note
+const TR_LABEL = { req:'Заявка перевозчику отправлена', mgr:'Чья', client:'Клиент', route:'Маршрут', num:'Номер', truck:'Машина', car:'Перевозчик',
+  d1:'Дата загрузки', locOld:'Локация старая', locNew:'Локация новая', inv:'Счёт', invNo:'Номер счёта', payCar:'Оплата перевозчику (дата)', note:'Комментарий' };
+const TR_SHORT = { truck:'машина', car:'перевозчик', d1:'дата загрузки', locNew:'локация', payCar:'дата оплаты перевозчику', client:'клиент', route:'маршрут' };
+const TR_DATES = ['d1','payCar'];
 const TR_SECTIONS = [
-  ['Основное', ['num','orders','trip','client','route']],
-  ['Плечо 1', ['d1','car1','truck1','net1']],
-  ['Плечо 2 (если через склад)', ['d2','car2','truck2','net2']],
-  ['В пути', ['locNew','locOld','unPlan','unFact']],
-  ['Расчёты с перевозчиком', ['invCarRecv','invCarNo','payCar']],
-  ['Расчёты с клиентом', ['invCliSent','invCliNo','payCliPlan','payCliFact']],
-  ['Деньги', ['gross','extra','extraNote','cur']],
+  ['Основное', ['req','mgr','client','route','num']],
+  ['Машина', ['truck','car','d1']],
+  ['Локация', ['locNew','locOld']],
+  ['Счета и оплата', ['inv','invNo','payCar']],
   ['Прочее', ['note']]
 ];
+const TR_INV_DEFAULT = ['по клиенту', 'по перевозчику', 'Оба'];
 const trToday = () => new Date(Date.now() + 3*3600*1000).toISOString().slice(0, 10);
 const trDays = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
 const trIso = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const trF = iso => trIso(iso) ? arFmt(iso) : esc(iso || '');
 const trHas = v => v !== null && v !== undefined && String(v).trim() !== '';
-const trLeg2 = r => ['d2','car2','truck2','net2'].some(k => trHas(r[k]));
-const trMoney = (v, cur) => v === null || v === undefined || v === '' ? '' : `${Number(v).toLocaleString('ru-RU')}${cur ? ' ' + esc(cur) : ''}`;
-function trMd(r){ if (!trHas(r.gross)) return null; return Math.round((r.gross - (r.net1 || 0) - (r.net2 || 0) - (r.extra || 0)) * 100) / 100; }
+const trN = s => String(s || '').toLowerCase().replace(/ё/g, 'е').trim();
+// Счёт: «оба» — оба выставлены; «по клиенту» — счёт клиенту есть, ждём счёт перевозчика; «по перевозчику» — наоборот
+const trInvCli = r => ['оба', 'по клиенту'].includes(trN(r.inv));
+const trInvCar = r => ['оба', 'по перевозчику'].includes(trN(r.inv));
+const trUnloadedText = s => /выгруж|выгруз/i.test(String(s || ''));
 
 // Этап перевозки
-// Сибур/Атырау приходят из другой таблицы (Tsytsulina) — у них нет выгрузки, счетов, оплат, денег
-const trIsSib = r => /сибур|атырау|atyrau/i.test(r.client || '');
-const TR_SIB_SECTIONS = [
-  ['Основное', ['num','orders','trip','client','route']],
-  ['Плечо 1', ['d1','car1','truck1']],
-  ['Плечо 2 (если через склад)', ['d2','car2','truck2']],
-  ['Локация', ['locNew','locOld']],
-  ['Прочее', ['note']]
-];
 function trStage(r, today){
-  if (trIsSib(r)) return ((trIso(r.d1) && r.d1 <= today) || trHas(r.locNew)) ? 'onway' : 'planned';
-  if (trHas(r.payCliFact) && trHas(r.payCar)) return 'closed';
-  if (trHas(r.unFact)) return 'unloaded';
-  if ((trIso(r.d1) && r.d1 <= today) || trHas(r.locNew)) return 'onway';
+  if (trN(r.inv) === 'оба') return 'closed';
+  if (trUnloadedText(r.locNew) || (!trHas(r.locNew) && trUnloadedText(r.locOld))) return 'unloaded';
+  if (trIso(r.d1) && r.d1 <= today) return 'onway';
   return 'planned';
 }
-// Что не заполнено для этого этапа
+// Чего не хватает
 function trGaps(r, stage){
-  if (trIsSib(r)){
-    const n = ['car1','truck1']; if (stage === 'onway') n.push('locNew');
-    if (trHas(r.truck2) || trHas(r.car2)) n.push('car2','truck2');
-    return n.filter(k => !trHas(r[k]));
-  }
-  const need = ['client','route','d1','car1','truck1','gross','net1'];
-  if (stage === 'onway') need.push('unPlan', 'locNew');
-  if (stage === 'unloaded' || stage === 'closed') need.push('invCarRecv','invCarNo','invCliSent','invCliNo','payCliPlan');
-  if (trLeg2(r)) need.push('d2','car2','truck2','net2');
+  if (stage === 'closed') return [];
+  const need = ['client','route','truck','car','d1'];
+  if (stage === 'onway') need.push('locNew');
+  if (stage === 'unloaded' && trInvCar(r)) need.push('payCar');
   return need.filter(k => !trHas(r[k]));
 }
-// Просрочки
 function trLate(r, stage, today){
   const out = [];
-  if (trIsSib(r)) return out;
-  if (stage === 'onway' && trIso(r.unPlan) && r.unPlan < today) out.push(`выгрузка просрочена на ${trDays(r.unPlan, today)} дн.`);
-  if ((stage === 'unloaded') && trIso(r.payCliPlan) && r.payCliPlan < today && !trHas(r.payCliFact)) out.push(`оплата клиента просрочена на ${trDays(r.payCliPlan, today)} дн.`);
+  if (stage !== 'closed' && !r.req) out.push('заявка перевозчику не отправлена');
+  if (stage === 'onway'){ const age = trLocAge(r.locNew); if (age !== null && age > 48) out.push(`локация не обновлялась ${trAgoText(age).replace(' назад', '')}`); }
   return out;
 }
 // «Брест · 26.10 15:40» → сколько часов назад
@@ -1351,6 +1334,7 @@ function trLocAge(s){
 }
 const trLocText = s => String(s || '').replace(/\s*·\s*\d{1,2}\.\d{1,2}\s+\d{1,2}:\d{2}\s*$/, '');
 function trAgoText(h){ if (h === null) return ''; if (h < 1) return 'только что'; if (h < 24) return `${Math.floor(h)} ч назад`; const d = Math.floor(h / 24); return `${d} ${plural(d,'день','дня','дней')} назад`; }
+const trStamp = () => { const n = new Date(Date.now() + 3*3600*1000); const p = x => String(x).padStart(2, '0'); return { dm: `${p(n.getUTCDate())}.${p(n.getUTCMonth()+1)}`, hm: `${p(n.getUTCHours())}:${p(n.getUTCMinutes())}` }; };
 
 function shState(title, text){
   const st = document.getElementById('pState');
@@ -1359,7 +1343,7 @@ function shState(title, text){
   document.getElementById('pMain').classList.add('hidden');
 }
 async function loadShipments(force){
-  if (!tgUser){ shState('Откройте через бота', 'Раздел работает только внутри Telegram (телефон, Telegram Desktop или web.telegram.org).'); return; }
+  if (!tgUser){ shState('Нужно войти', 'Войдите через Telegram.'); return; }
   if (!TR_DATA || force) shState('Загружаю…');
   try{
     const r = await fetch(`${API}/money-trips?init_data=${encodeURIComponent(initData)}&user_id=${tgUser.id}`);
@@ -1372,14 +1356,14 @@ async function loadShipments(force){
     if (!TR_DATA) shState('Нет связи с сервисом', 'Включите воркфлоу <b style="display:inline;font:inherit;color:inherit">Money Trips API</b> в n8n.');
   }
 }
-async function trSave(action, row, data){
+async function trSave(row, data){
   const r = await fetch(`${API}/money-trips-save`, { method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ init_data:initData, user_id:tgUser?.id, action, row, data }) });
+    body: JSON.stringify({ init_data:initData, user_id:tgUser?.id, action:'update', row, data }) });
   const raw = await r.json(); const d = Array.isArray(raw) ? raw[0] : raw;
   if (!d || d.ok === false) throw new Error((d && d.reason) || 'fail');
 }
 
-// Группы клиентов: кнопки на главном экране
+// Группы клиентов
 const TR_GROUPS = [
   { k:'izh',   l:'Ижевск',  test: r => /ижевск|isolotten/i.test(r.client || '') },
   { k:'tuy',   l:'Туймазы', test: r => /туймаз|карбон/i.test(r.client || '') },
@@ -1395,16 +1379,15 @@ function trGroupName(r){
   return r.client || 'Клиент?';
 }
 function trGroupKey(r){ return (TR_GROUPS.slice(0, 4).find(g => g.test(r)) || {}).k || 'other'; }
-// Текущая машина: если заполнен № авто 2 — показываем второе плечо, иначе первое
-const trTruck = r => trHas(r.truck2) ? { truck: r.truck2, car: r.car2 } : { truck: r.truck1, car: r.car1 };
-let TR_GRP = (() => { try{ return localStorage.getItem('tr_grp') || 'all'; }catch(e){ return 'all'; } })();
-let TR_SUB = 'all', TR_SHOW_CLOSED = false;
+const trLs = (k, d) => { try{ return localStorage.getItem(k) || d; }catch(e){ return d; } };
+const trLsSet = (k, v) => { try{ localStorage.setItem(k, v); }catch(e){} };
+let TR_GRP = trLs('tr_grp', 'all'), TR_MGR = trLs('tr_mgr', 'all'), TR_SUB = 'all', TR_SHOW_CLOSED = false, TR_VIEW = 'list';
 
-// Текст локаций для клиента: «номер перевозки, номер авто, локация» — по машинам в пути
+// Текст локаций для клиента: «номер, машина, локация» — по машинам в пути
 function trLocCopy(list, which){
   const lines = list.filter(x => x.st === 'onway').map(({ r }) => {
     const loc = trLocText(which === 'old' ? r.locOld : r.locNew);
-    return [r.num || r.trip, trTruck(r).truck, loc || '—'].map(v => String(v || '').trim()).join(', ');
+    return [r.num, r.truck, loc || '—'].map(v => String(v || '').trim()).filter(Boolean).join(', ');
   });
   const sheet = trSheet(`
     <div class="sh-head"><div><div class="sh-name">${which === 'old' ? 'Локации старые' : 'Локации новые'}</div>
@@ -1420,34 +1403,51 @@ function trLocCopy(list, which){
   };
 }
 
-function renderShipments(){
+function trAllRows(){
   const today = TR_DATA.today || trToday();
-  const rows = (TR_DATA.rows || []).map(r => { const st = trStage(r, today); return { r, st, gaps: trGaps(r, st), late: trLate(r, st, today), g: trGroupKey(r) }; });
+  return (TR_DATA.rows || []).map(r => { const st = trStage(r, today); return { r, st, gaps: trGaps(r, st), late: trLate(r, st, today), g: trGroupKey(r) }; });
+}
+function trMgrs(){ return [...new Set((TR_DATA.rows || []).map(r => String(r.mgr || '').trim()).filter(Boolean))].sort(); }
+const trMgrOk = r => TR_MGR === 'all' || trN(r.mgr) === trN(TR_MGR === 'me' ? (TR_DATA.me || '') : TR_MGR);
+
+function renderShipments(){
+  if (TR_VIEW === 'pay') return renderCarrierPay();
+  const today = TR_DATA.today || trToday();
+  const rows = trAllRows().filter(x => trMgrOk(x.r));
   const grp = TR_GROUPS.find(g => g.k === TR_GRP) || TR_GROUPS[4];
   let inGrp = rows.filter(x => grp.test(x.r));
   if (grp.k === 'sib' && TR_SUB !== 'all') inGrp = inGrp.filter(x => TR_SUB === 'aty' ? trIsAty(x.r) : !trIsAty(x.r));
   const order = { onway:0, planned:1, unloaded:2, closed:3 };
-  const sorted = [...inGrp].sort((a, b) => order[a.st] - order[b.st] || String(a.r.d1 || '9999').localeCompare(String(b.r.d1 || '9999')));
-  const active = sorted.filter(x => x.st !== 'closed'), closed = sorted.filter(x => x.st === 'closed');
-  const list = TR_SHOW_CLOSED ? sorted : active;
+  const sorted = [...inGrp].sort((a, b) => order[a.st] - order[b.st] || String(b.r.d1 || '').localeCompare(String(a.r.d1 || '')));
+  const closed = sorted.filter(x => x.st === 'closed');
+  const list = TR_SHOW_CLOSED ? sorted : sorted.filter(x => x.st !== 'closed');
   const cntActive = k => rows.filter(x => x.st !== 'closed' && (TR_GROUPS.find(g => g.k === k)).test(x.r)).length;
+  const mgrs = trMgrs();
+  const mgrChip = (k, l) => `<button type="button" class="ln-chip ${TR_MGR === k ? 'on' : ''}" data-mgr="${esc(k)}">${esc(l)}</button>`;
 
   const m = document.getElementById('pMain');
   m.innerHTML = `
+    <div class="ln-chips tr-mgrs">${TR_DATA.me ? mgrChip('me', 'Мои') : ''}${mgrs.filter(x => trN(x) !== trN(TR_DATA.me)).map(x => mgrChip(x, x)).join('')}${mgrChip('all', 'Все')}
+      <button type="button" class="ln-chip tr-paybtn" id="trPay">💶 Оплата перевозчикам</button></div>
     <div class="tr-groups">
       ${TR_GROUPS.map(g => `<button type="button" class="tr-grp g-${g.k} ${TR_GRP === g.k ? 'on' : ''}" data-grp="${g.k}"><b>${g.l}</b><span>${cntActive(g.k)}</span></button>`).join('')}
       <button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button>
     </div>
     ${grp.k === 'sib' ? `<div class="ln-chips">${[['all','Все'],['aty','Атырау'],['sib','Сибур']].map(([k, l]) => `<button type="button" class="ln-chip ${TR_SUB === k ? 'on' : ''}" data-sub="${k}">${l}</button>`).join('')}</div>` : ''}
-    ${grp.k === 'izh' || grp.k === 'tuy' ? `<div class="tr-locbtns"><button type="button" data-loccopy="old">📋 Локации старые</button><button type="button" data-loccopy="new" class="primary">📋 Локации новые</button></div>` : ''}
+    ${grp.k === 'izh' || grp.k === 'tuy' || grp.k === 'sib' ? `<div class="tr-locbtns"><button type="button" data-loccopy="old">📋 Локации старые</button><button type="button" data-loccopy="new" class="primary">📋 Локации новые</button></div>` : ''}
     ${list.length ? list.map(x => trCard(x, today)).join('') : '<div class="inv-plan">Здесь пока пусто.</div>'}
     ${closed.length ? `<button type="button" class="ln-wide" id="trClosed" style="margin:4px 0 10px">${TR_SHOW_CLOSED ? 'Скрыть закрытые' : `Показать закрытые · ${closed.length}`}</button>` : ''}`;
 
   m.querySelector('.g-refresh').onclick = () => loadShipments(true);
-  m.querySelectorAll('[data-grp]').forEach(b => b.onclick = () => { TR_GRP = b.dataset.grp; TR_SUB = 'all'; try{ localStorage.setItem('tr_grp', TR_GRP); }catch(e){} renderShipments(); });
+  m.querySelector('#trPay').onclick = () => { TR_VIEW = 'pay'; renderShipments(); window.scrollTo(0, 0); };
+  m.querySelectorAll('[data-mgr]').forEach(b => b.onclick = () => { TR_MGR = b.dataset.mgr; trLsSet('tr_mgr', TR_MGR); renderShipments(); });
+  m.querySelectorAll('[data-grp]').forEach(b => b.onclick = () => { TR_GRP = b.dataset.grp; TR_SUB = 'all'; trLsSet('tr_grp', TR_GRP); renderShipments(); });
   m.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { TR_SUB = b.dataset.sub; renderShipments(); });
   m.querySelectorAll('[data-loccopy]').forEach(b => b.onclick = () => trLocCopy(inGrp, b.dataset.loccopy));
   const cb = m.querySelector('#trClosed'); if (cb) cb.onclick = () => { TR_SHOW_CLOSED = !TR_SHOW_CLOSED; renderShipments(); };
+  trBindCards(m);
+}
+function trBindCards(m){
   const byRow = n => (TR_DATA.rows || []).find(r => r.row === +n);
   m.querySelectorAll('[data-edit]').forEach(el => el.onclick = e => { if (e.target.closest('button[data-act]')) return; trEdit(byRow(el.dataset.edit)); });
   m.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => {
@@ -1459,31 +1459,67 @@ function renderShipments(){
 
 const TR_ST_LABEL = { planned:'заявка', onway:'в пути', unloaded:'выгружен', closed:'закрыт' };
 function trCard({ r, st, gaps, late, g }, today){
-  const { truck, car } = trTruck(r);
-  const head = [`<b>${esc(trGroupName(r))}</b>`, trHas(truck) ? esc(truck) : '<em>№ авто?</em>', trHas(car) ? esc(car) : '<em>перевозчик?</em>'].join(' · ');
+  const head = [`<b>${esc(trGroupName(r))}</b>`, trHas(r.truck) ? esc(r.truck) : '<em>машина?</em>', trHas(r.car) ? esc(r.car) : '<em>перевозчик?</em>'].join(' · ');
   let line = '';
-  if (st === 'planned') { const d = trIso(r.d1) ? trDays(today, r.d1) : null; line = d === null ? 'дата погрузки не указана' : d === 0 ? 'погрузка сегодня' : d === 1 ? 'погрузка завтра' : d < 0 ? `погрузка была ${trF(r.d1)}` : `погрузка через ${d} ${plural(d,'день','дня','дней')}`; }
-  if (st === 'onway') {
+  if (st === 'planned') { const d = trIso(r.d1) ? trDays(today, r.d1) : null; line = d === null ? (trHas(r.d1) ? 'загрузка ' + esc(r.d1) : 'дата загрузки не указана') : d === 0 ? 'загрузка сегодня' : d === 1 ? 'загрузка завтра' : `загрузка через ${d} ${plural(d,'день','дня','дней')}`; }
+  if (st === 'onway' || st === 'unloaded' || st === 'closed') {
     const age = trLocAge(r.locNew);
-    line = `<span class="tr-loc ${age !== null && age > 24 ? 'tr-old' : ''}">📍 ${trHas(r.locNew) ? esc(trLocText(r.locNew)) + (age !== null ? ` <i>· ${trAgoText(age)}</i>` : '') : '<em>локация не указана</em>'}</span>`;
+    line = `<span class="tr-loc ${age !== null && age > 24 ? 'tr-old' : ''}">📍 ${trHas(r.locNew) ? esc(trLocText(r.locNew)) + (age !== null ? ` <i>· ${trAgoText(age)}</i>` : '') : trHas(r.locOld) ? esc(trLocText(r.locOld)) + ' <i>· старая</i>' : '<em>локация не указана</em>'}</span>`;
   }
   if (st === 'unloaded' || st === 'closed') {
     const f = (ok, l) => `<span class="tr-flag ${ok ? 'ok' : ''}">${ok ? '✓' : '○'} ${l}</span>`;
-    line = `выгружен ${trF(r.unFact)}<div class="tr-flags">${f(trHas(r.invCarRecv), 'счёт перевозчика')}${f(trHas(r.payCar), 'оплата перевозчику')}${f(trHas(r.invCliSent), 'счёт клиенту')}${f(trHas(r.payCliFact), 'оплата клиента' + (!trHas(r.payCliFact) && trHas(r.payCliPlan) ? ' · план ' + trF(r.payCliPlan) : ''))}</div>`;
+    line += `<div class="tr-flags">${f(trInvCli(r), 'счёт клиенту')}${f(trInvCar(r), 'счёт перевозчика')}${trHas(r.payCar) ? `<span class="tr-flag ok" style="background:#EEF2F6;color:var(--steel-dk)">💶 оплата ${trF(r.payCar)}</span>` : ''}</div>`;
   }
-  const sib = trIsSib(r);
-  const sub = [trHas(r.num) ? '№ ' + esc(r.num) : '', esc(r.route || ''), !sib && st === 'onway' && trHas(r.unPlan) ? 'выгрузка ' + trF(r.unPlan) : ''].filter(Boolean).join(' · ');
-  const btns = st !== 'onway' ? '' : sib ? `<div class="sp-btns"><button type="button" data-act="loc" data-row="${r.row}" style="grid-column:1/-1">📍 Локация</button></div>`
-    : `<div class="sp-btns"><button type="button" data-act="loc" data-row="${r.row}">📍 Локация</button><button type="button" data-act="unl" data-row="${r.row}" class="primary">✅ Выгружен</button></div>`;
+  const sub = [trHas(r.num) ? '№ ' + esc(r.num) : '', esc(r.route || ''), trHas(r.d1) ? 'загр. ' + trF(r.d1) : '', trHas(r.mgr) ? esc(r.mgr) : ''].filter(Boolean).join(' · ');
+  const btns = st === 'onway' ? `<div class="sp-btns"><button type="button" data-act="loc" data-row="${r.row}">📍 Локация</button><button type="button" data-act="unl" data-row="${r.row}" class="primary">✅ Выгружен</button></div>`
+    : st === 'planned' ? `<div class="sp-btns"><button type="button" data-act="loc" data-row="${r.row}">📍 Локация</button></div>` : '';
   return `<div class="tr-card g-${g} st-${st}${late.length ? ' late' : ''}" data-edit="${r.row}">
     <div class="tr-head"><span>${head}</span><span class="tr-st st-${st}">${TR_ST_LABEL[st]}</span></div>
     <div class="tr-line">${line}</div>
     ${sub ? `<div class="ar-sub">${sub}</div>` : ''}
+    ${trHas(r.note) ? `<div class="ar-sub">💬 ${esc(r.note)}</div>` : ''}
     ${late.length ? `<div class="tr-late">⏰ ${late.join(' · ')}</div>` : ''}
     ${gaps.length ? `<div class="tr-gaps">Не заполнено: ${gaps.map(k => TR_SHORT[k] || TR_LABEL[k]).join(', ')}</div>` : ''}
-    ${trHas(r.manager) || trHas(r.editedBy) ? `<div class="tr-who">${trHas(r.manager) ? 'внёс: ' + esc(r.manager) : ''}${trHas(r.manager) && trHas(r.editedBy) ? ' · ' : ''}${trHas(r.editedBy) ? 'изменил: ' + esc(r.editedBy) : ''}</div>` : ''}
     ${btns}
   </div>`;
+}
+
+// ===== ОПЛАТА ПЕРЕВОЗЧИКАМ =====
+function renderCarrierPay(){
+  const today = TR_DATA.today || trToday();
+  const rows = trAllRows().filter(x => trMgrOk(x.r) && trHas(x.r.car));
+  const pay = rows.filter(x => trIso(x.r.payCar));
+  const late = pay.filter(x => x.r.payCar < today && trDays(x.r.payCar, today) <= 14).sort((a, b) => b.r.payCar.localeCompare(a.r.payCar));
+  const now = pay.filter(x => x.r.payCar === today);
+  const week = pay.filter(x => x.r.payCar > today && trDays(today, x.r.payCar) <= 7).sort((a, b) => a.r.payCar.localeCompare(b.r.payCar));
+  const later = pay.filter(x => trDays(today, x.r.payCar) > 7).sort((a, b) => a.r.payCar.localeCompare(b.r.payCar));
+  const noInv = rows.filter(x => (x.st === 'unloaded' || x.st === 'closed') && !trInvCar(x.r)).sort((a, b) => String(a.r.d1 || '').localeCompare(String(b.r.d1 || '')));
+  const noDate = rows.filter(x => trInvCar(x.r) && !trHas(x.r.payCar));
+  const item = x => `<div class="tr-card g-${x.g} st-${x.st}" data-edit="${x.r.row}">
+      <div class="tr-head"><span><b>${esc(x.r.car)}</b> · ${esc(x.r.truck || 'машина?')}</span><span class="tr-st">${trIso(x.r.payCar) ? trF(x.r.payCar) : ''}</span></div>
+      <div class="ar-sub">${[esc(trGroupName(x.r)), esc(x.r.route || ''), trHas(x.r.num) ? '№ ' + esc(x.r.num) : '', trHas(x.r.mgr) ? esc(x.r.mgr) : ''].filter(Boolean).join(' · ')}</div>
+      <div class="tr-flags" style="margin-top:5px"><span class="tr-flag ${trInvCar(x.r) ? 'ok' : ''}">${trInvCar(x.r) ? '✓ счёт перевозчика есть' : '○ счёта перевозчика нет'}</span>${trHas(x.r.invNo) ? `<span class="tr-flag ok" style="background:#EEF2F6;color:var(--steel-dk)">№ ${esc(x.r.invNo)}</span>` : ''}</div>
+    </div>`;
+  const block = (title, arr, cls, hint) => arr.length ? `<h3 class="tr-payh ${cls || ''}">${title} · ${arr.length}</h3>${hint ? `<p class="sh-note" style="margin:-4px 2px 8px">${hint}</p>` : ''}${arr.map(item).join('')}` : '';
+  const m = document.getElementById('pMain');
+  m.innerHTML = `
+    <div class="tr-paytop"><button type="button" class="ln-chip" id="trBack">← Перевозки</button><b>Оплата перевозчикам</b><button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button></div>
+    <div class="tr-kpis tr-paykpi">
+      <div class="${now.length ? 'warn' : ''}"><strong>${now.length}</strong><span>сегодня</span></div>
+      <div><strong>${week.length}</strong><span>за 7 дней</span></div>
+      <div class="${noInv.length ? 'bad' : ''}"><strong>${noInv.length}</strong><span>нет счёта</span></div>
+      <div class="${noDate.length ? 'warn' : ''}"><strong>${noDate.length}</strong><span>без даты</span></div>
+    </div>
+    ${block('Платить сегодня', now, 'warn')}
+    ${block('Ближайшие 7 дней', week)}
+    ${block('Счёт перевозчика не пришёл', noInv, 'bad', 'Машина выгружена, а в «Счёт» нет «по перевозчику» или «Оба».')}
+    ${block('Счёт есть, дата оплаты не указана', noDate, 'warn', 'Поставь дату в столбце «оплата».')}
+    ${block('Позже', later)}
+    ${block('Дата оплаты прошла (14 дней)', late, '', 'Проверь, что оплачено.')}
+    ${!now.length && !week.length && !noInv.length && !noDate.length && !later.length && !late.length ? '<div class="inv-plan">Платежей нет.</div>' : ''}`;
+  m.querySelector('#trBack').onclick = () => { TR_VIEW = 'list'; renderShipments(); };
+  m.querySelector('.g-refresh').onclick = () => loadShipments(true);
+  trBindCards(m);
 }
 
 function trSheet(html){
@@ -1494,106 +1530,100 @@ function trSheet(html){
   return sheet;
 }
 
-// Полная форма: новая перевозка или правка
+// Форма правки строки
 function trEdit(r){
-  const isNew = !r;
-  const v = r ? { ...r } : { cur: '€' };
+  if (!r) return;
+  const v = { ...r };
   const today = TR_DATA.today || trToday();
-  const st = isNew ? 'planned' : trStage(v, today);
+  const st = trStage(v, today);
   const gaps = new Set(trGaps(v, st));
-  const uniq = k => [...new Set((TR_DATA.rows || []).map(x => x[k]).filter(trHas))].sort();
-  const lists = { client: uniq('client'), route: uniq('route'), car1: [...new Set([...uniq('car1'), ...uniq('car2')])], car2: null, cur: ['€', '$', '₽', 'TL'] };
-  lists.car2 = lists.car1;
+  const uniq = k => [...new Set((TR_DATA.rows || []).map(x => String(x[k] || '').trim()).filter(Boolean))].sort();
+  const invOpts = [...new Map([...TR_INV_DEFAULT, ...uniq('inv')].map(x => [trN(x), x])).values()];
+  const lists = { client: uniq('client'), route: uniq('route'), car: uniq('car'), mgr: uniq('mgr') };
   const field = k => {
     const val = v[k] ?? '';
     const miss = gaps.has(k) ? ' miss' : '';
+    if (k === 'req') return `<div class="tr-f"><label class="tr-check"><input type="checkbox" data-k="req" ${v.req ? 'checked' : ''}> ${TR_LABEL.req}</label></div>`;
+    if (k === 'inv') return `<div class="tr-f"><label for="tf_inv">${TR_LABEL.inv}</label><select class="inv-in" id="tf_inv" data-k="inv"><option value="">— ни одного —</option>${invOpts.map(o => `<option value="${esc(o)}" ${trN(o) === trN(val) ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>
+      <small>«по клиенту» — счёт клиенту выставлен, ждём счёт перевозчика; «по перевозчику» — наоборот; «Оба» — закрыто</small></div>`;
     if (TR_DATES.includes(k)) return `<div class="tr-f${miss}"><label for="tf_${k}">${TR_LABEL[k]}<button type="button" class="tr-today" data-today="${k}">сегодня</button></label>
       <input class="inv-in" id="tf_${k}" data-k="${k}" type="date" value="${trIso(val) ? val : ''}">${!trIso(val) && trHas(val) ? `<small>в таблице: ${esc(val)}</small>` : ''}</div>`;
-    if (k === 'note' || k === 'extraNote') return `<div class="tr-f${miss}"><label for="tf_${k}">${TR_LABEL[k]}</label><textarea class="inv-in tr-ta" id="tf_${k}" data-k="${k}" rows="2">${esc(val)}</textarea></div>`;
+    if (k === 'note') return `<div class="tr-f"><label for="tf_note">${TR_LABEL.note}</label><textarea class="inv-in tr-ta" id="tf_note" data-k="note" rows="2">${esc(val)}</textarea></div>`;
     const dl = lists[k] ? `list="tl_${k}"` : '';
     const dlHtml = lists[k] ? `<datalist id="tl_${k}">${lists[k].map(x => `<option value="${esc(x)}"></option>`).join('')}</datalist>` : '';
-    return `<div class="tr-f${miss}"><label for="tf_${k}">${TR_LABEL[k]}</label><input class="inv-in" id="tf_${k}" data-k="${k}" ${TR_NUMS.includes(k) ? 'type="number" inputmode="decimal" step="any"' : 'type="text"'} ${dl} value="${esc(val)}" autocomplete="off">${dlHtml}</div>`;
+    return `<div class="tr-f${miss}"><label for="tf_${k}">${TR_LABEL[k]}</label><input class="inv-in" id="tf_${k}" data-k="${k}" type="text" ${dl} value="${esc(val)}" autocomplete="off">${dlHtml}</div>`;
   };
   const sheet = trSheet(`
-    <div class="sh-head"><div><div class="sh-name">${isNew ? 'Новая перевозка' : esc(v.route || 'Перевозка')}</div>
-      <div class="sh-phone">${isNew ? 'заполни что знаешь — остальное потом' : `${trHas(v.num) ? '№ ' + esc(v.num) + ' · ' : ''}${{ planned:'заявка', onway:'в пути', unloaded:'выгружен', closed:'закрыт' }[st]}${gaps.size ? ` · не заполнено ${gaps.size}` : ''}${trHas(v.manager) ? ` · внёс ${esc(v.manager)}` : ''}${trHas(v.editedBy) ? ` · изменил ${esc(v.editedBy)}` : ''}`}</div></div>
+    <div class="sh-head"><div><div class="sh-name">${esc(v.route || 'Перевозка')}</div>
+      <div class="sh-phone">${trHas(v.num) ? '№ ' + esc(v.num) + ' · ' : ''}${TR_ST_LABEL[st]}${gaps.size ? ` · не заполнено ${gaps.size}` : ''}${trHas(v.mgr) ? ` · ${esc(v.mgr)}` : ''} · строка ${v.row}</div></div>
       <button class="sh-x" type="button" aria-label="Закрыть">×</button></div>
-    ${(r && trIsSib(r) ? TR_SIB_SECTIONS : TR_SECTIONS).map(([title, keys]) => `<div class="tr-sec"><h4>${title}</h4><div class="tr-grid">${keys.map(field).join('')}</div></div>`).join('')}
-    ${r && trIsSib(r) ? '' : '<div class="tr-sec"><h4>МД (считается сам)</h4><div class="tr-mdbox" id="trMd"></div></div>'}
+    ${TR_SECTIONS.map(([title, keys]) => `<div class="tr-sec"><h4>${title}</h4><div class="tr-grid">${keys.map(field).join('')}</div></div>`).join('')}
     <div id="trErr"></div>
-    <div class="tr-savebar"><button type="button" id="trOk" class="primary">${isNew ? 'Создать' : 'Сохранить'}</button><button type="button" data-close>Отмена</button></div>`);
+    <div class="tr-savebar"><button type="button" id="trOk" class="primary">Сохранить</button><button type="button" data-close>Отмена</button></div>`);
 
-  const get = k => { const el = sheet.querySelector(`[data-k="${k}"]`); return el ? el.value.trim() : ''; };
-  const numv = k => { const x = parseFloat(get(k).replace(',', '.')); return isFinite(x) ? x : null; };
-  const paintMd = () => {
-    const g = numv('gross'); const box = sheet.querySelector('#trMd');
-    if (!box) return;
-    if (g === null){ box.innerHTML = '<span class="sh-note" style="margin:0">впиши брутто и нетто</span>'; return; }
-    const md = Math.round((g - (numv('net1') || 0) - (numv('net2') || 0) - (numv('extra') || 0)) * 100) / 100;
-    box.innerHTML = `<b class="${md < 0 ? 'neg' : ''}">${md.toLocaleString('ru-RU')} ${esc(get('cur') || '€')}</b><span>брутто ${g} − нетто ${(numv('net1') || 0) + (numv('net2') || 0)} − доп. ${numv('extra') || 0}</span>`;
-  };
-  sheet.querySelectorAll('[data-k]').forEach(el => el.addEventListener('input', () => { el.closest('.tr-f')?.classList.toggle('miss', false); paintMd(); }));
+  sheet.querySelectorAll('[data-k]').forEach(el => el.addEventListener('input', () => el.closest('.tr-f')?.classList.toggle('miss', false)));
   sheet.querySelectorAll('[data-today]').forEach(b => b.onclick = () => { const el = sheet.querySelector(`[data-k="${b.dataset.today}"]`); el.value = today; el.dispatchEvent(new Event('input')); });
-  paintMd();
 
   sheet.querySelector('#trOk').onclick = async () => {
     const data = {};
     sheet.querySelectorAll('[data-k]').forEach(el => {
-      const k = el.dataset.k, nv = el.value.trim();
-      const ov = r ? (r[k] === null || r[k] === undefined ? '' : String(r[k])) : '';
+      const k = el.dataset.k;
+      if (k === 'req'){ if (el.checked !== !!r.req) data.req = el.checked; return; }
+      const nv = el.value.trim();
+      const ov = r[k] === null || r[k] === undefined ? '' : String(r[k]);
       if (TR_DATES.includes(k) && !nv && ov && !trIso(ov)) return;     // дату в странном формате не трогаем, если поле не меняли
-      if (isNew ? nv !== '' : nv !== ov) data[k] = nv;
+      if (k === 'inv' && trN(nv) === trN(ov)) return;
+      if (nv !== ov) data[k] = nv;
     });
     if (!Object.keys(data).length){ closeClient(); return; }
-    if (isNew && !data.route && !data.client && !data.num){ sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Впиши хотя бы маршрут, клиента или номер заявки.</p>'; return; }
     const btns = sheet.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
     try{
-      await trSave(isNew ? 'create' : 'update', r ? r.row : null, data);
+      await trSave(r.row, data);
       try{ tg?.HapticFeedback?.notificationOccurred('success'); }catch(e){}
       closeClient(); await loadShipments(true);
     }catch(e){
       btns.forEach(b => b.disabled = false);
-      sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить. Проверьте воркфлоу Money Trips API и названия колонок в листе «Джарвис».</p>';
+      sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить. Проверьте воркфлоу Money Trips API.</p>';
     }
   };
 }
 
 function trAskLocation(r){
   const sheet = trSheet(`<div class="sh-head"><div><div class="sh-name">Где машина</div>
-      <div class="sh-phone">${esc(r.route || '')}${r.truck1 ? ' · ' + esc(r.truck1) : ''}</div></div><button class="sh-x" type="button" aria-label="Закрыть">×</button></div>
+      <div class="sh-phone">${esc(r.route || '')}${r.truck ? ' · ' + esc(r.truck) : ''}</div></div><button class="sh-x" type="button" aria-label="Закрыть">×</button></div>
     <label class="f" for="trLoc">Город / граница / комментарий</label>
-    <input class="inv-in" id="trLoc" type="text" placeholder="например: граница Верхний Ларс">
-    ${trHas(r.locNew) ? `<p class="sh-note">Сейчас: ${esc(r.locNew)} — станет «прошлой»</p>` : ''}
+    <input class="inv-in" id="trLoc" type="text" placeholder="например: Batum">
+    ${trHas(r.locNew) ? `<p class="sh-note">Сейчас: ${esc(r.locNew)} — станет «старой»</p>` : ''}
     <div id="trErr"></div>
     <div class="bc-actions" style="margin-top:10px"><button type="button" id="trOk" class="primary">Сохранить</button><button type="button" data-close>Отмена</button></div>`);
   const inp = sheet.querySelector('#trLoc'); setTimeout(() => inp.focus(), 150);
   sheet.querySelector('#trOk').onclick = async () => {
     const t = inp.value.trim(); if (!t){ inp.focus(); return; }
-    const now = new Date(Date.now() + 3*3600*1000);
-    const stamp = `${String(now.getUTCDate()).padStart(2,'0')}.${String(now.getUTCMonth()+1).padStart(2,'0')} ${String(now.getUTCHours()).padStart(2,'0')}:${String(now.getUTCMinutes()).padStart(2,'0')}`;
+    const s = trStamp(), nl = `${t} · ${s.dm} ${s.hm}`;
     const btns = sheet.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
     try{
-      await trSave('update', r.row, { locOld: r.locNew || '', locNew: `${t} · ${stamp}` });
-      r.locOld = r.locNew || ''; r.locNew = `${t} · ${stamp}`; closeClient(); renderShipments();
+      await trSave(r.row, { locOld: r.locNew || r.locOld || '', locNew: nl });
+      r.locOld = r.locNew || r.locOld || ''; r.locNew = nl; closeClient(); renderShipments();
     }catch(e){ btns.forEach(b => b.disabled = false); sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить.</p>'; }
   };
 }
+// Выгружен → в «локация новая» пишется «выгружен 26.10» (как у Маши), прошлая локация уходит в «старую»
 function trAskUnloaded(r){
   const today = TR_DATA.today || trToday();
   const sheet = trSheet(`<div class="sh-head"><div><div class="sh-name">Выгружен</div>
-      <div class="sh-phone">${esc(r.route || '')}${r.truck1 ? ' · ' + esc(r.truck1) : ''}</div></div><button class="sh-x" type="button" aria-label="Закрыть">×</button></div>
+      <div class="sh-phone">${esc(r.route || '')}${r.truck ? ' · ' + esc(r.truck) : ''}</div></div><button class="sh-x" type="button" aria-label="Закрыть">×</button></div>
     <label class="f" for="trDate">Дата выгрузки</label>
     <input class="inv-in" id="trDate" type="date" value="${today}">
     <div id="trErr"></div>
     <div class="bc-actions" style="margin-top:10px"><button type="button" id="trOk" class="primary">Отметить</button><button type="button" data-close>Отмена</button></div>`);
   sheet.querySelector('#trOk').onclick = async () => {
     const d = sheet.querySelector('#trDate').value || today;
+    const nl = `выгружен ${d.slice(8, 10)}.${d.slice(5, 7)}`;
     const btns = sheet.querySelectorAll('button'); btns.forEach(b => b.disabled = true);
-    try{ await trSave('update', r.row, { unFact: d }); r.unFact = d; closeClient(); renderShipments(); }
+    try{ await trSave(r.row, { locOld: r.locNew || r.locOld || '', locNew: nl }); r.locOld = r.locNew || r.locOld || ''; r.locNew = nl; closeClient(); renderShipments(); }
     catch(e){ btns.forEach(b => b.disabled = false); sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить.</p>'; }
   };
 }
-
 
 // Открыть сразу нужную вкладку: money.html?tab=loan
 showTab(new URLSearchParams(location.search).get('tab') || 'shipments');
