@@ -488,6 +488,7 @@
   .tr-flag{font-size:11.5px;padding:2px 7px;border-radius:7px;background:#FBEEEC;color:#8A3B2E;font-weight:600;}
   .tr-flag.ok{background:#E3F1E8;color:#2F5A3D;}
   .tr-late{margin-top:6px;font-size:12.5px;font-weight:700;color:#B5483A;}
+  .tr-who{margin-top:6px;font-size:11.5px;color:var(--muted);}
   .tr-gaps{margin-top:6px;font-size:12px;color:#8A3B2E;background:#FBEEEC;border-radius:8px;padding:5px 8px;}
   .tr-sec{background:#fff;border:1px solid var(--line-soft);border-radius:14px;padding:10px 12px;margin-bottom:10px;}
   .tr-sec h4{margin:0 0 6px;font-size:12px;font-weight:700;color:var(--muted);}
@@ -1330,7 +1331,7 @@ async function loadShipments(force){
   try{
     const r = await fetch(`${API}/money-trips?init_data=${encodeURIComponent(initData)}&user_id=${tgUser.id}`);
     const raw = await r.json(); const d = Array.isArray(raw) ? raw[0] : raw;
-    if (!d || d.ok === false){ shState('Нет доступа', 'Раздел только для владельца бота.'); return; }
+    if (!d || d.ok === false){ shState('Нет доступа', d && d.user_id ? `Твой Telegram ID: <b style="display:inline;font:inherit">${esc(d.user_id)}</b> — отправь его Саше, чтобы он добавил тебя в список доступа.` : 'Раздел только для тех, кто есть в списке доступа.'); return; }
     TR_DATA = d; shState('');
     document.getElementById('pMain').classList.remove('hidden');
     renderShipments();
@@ -1424,6 +1425,7 @@ function trCard({ r, st, gaps, late }, today){
     ${money ? `<div class="ar-sub">${money}</div>` : ''}
     ${late.length ? `<div class="tr-late">⏰ ${late.join(' · ')}</div>` : ''}
     ${gaps.length ? `<div class="tr-gaps">Не заполнено: ${gaps.map(k => TR_SHORT[k] || TR_LABEL[k]).join(', ')}</div>` : ''}
+    ${trHas(r.manager) || trHas(r.editedBy) ? `<div class="tr-who">${trHas(r.manager) ? 'внёс: ' + esc(r.manager) : ''}${trHas(r.manager) && trHas(r.editedBy) ? ' · ' : ''}${trHas(r.editedBy) ? 'изменил: ' + esc(r.editedBy) : ''}</div>` : ''}
     ${btns}
   </div>`;
 }
@@ -1458,7 +1460,7 @@ function trEdit(r){
   };
   const sheet = trSheet(`
     <div class="sh-head"><div><div class="sh-name">${isNew ? 'Новая перевозка' : esc(v.route || 'Перевозка')}</div>
-      <div class="sh-phone">${isNew ? 'заполни что знаешь — остальное потом' : `${trHas(v.num) ? '№ ' + esc(v.num) + ' · ' : ''}${{ planned:'заявка', onway:'в пути', unloaded:'выгружен', closed:'закрыт' }[st]}${gaps.size ? ` · не заполнено ${gaps.size}` : ''}`}</div></div>
+      <div class="sh-phone">${isNew ? 'заполни что знаешь — остальное потом' : `${trHas(v.num) ? '№ ' + esc(v.num) + ' · ' : ''}${{ planned:'заявка', onway:'в пути', unloaded:'выгружен', closed:'закрыт' }[st]}${gaps.size ? ` · не заполнено ${gaps.size}` : ''}${trHas(v.manager) ? ` · внёс ${esc(v.manager)}` : ''}${trHas(v.editedBy) ? ` · изменил ${esc(v.editedBy)}` : ''}`}</div></div>
       <button class="sh-x" type="button" aria-label="Закрыть">×</button></div>
     ${TR_SECTIONS.map(([title, keys]) => `<div class="tr-sec"><h4>${title}</h4><div class="tr-grid">${keys.map(field).join('')}</div></div>`).join('')}
     <div class="tr-sec"><h4>МД (считается сам)</h4><div class="tr-mdbox" id="trMd"></div></div>
