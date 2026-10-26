@@ -490,6 +490,23 @@
   .tr-late{margin-top:6px;font-size:12.5px;font-weight:700;color:#B5483A;}
   .tr-who{margin-top:6px;font-size:11.5px;color:var(--muted);}
   .tr-gaps{margin-top:6px;font-size:12px;color:#8A3B2E;background:#FBEEEC;border-radius:8px;padding:5px 8px;}
+  .tr-groups{display:grid;grid-template-columns:repeat(5,minmax(0,1fr)) 44px;gap:6px;margin:10px 0 10px;}
+  .tr-grp{border:0;border-radius:12px;padding:9px 4px;color:#fff;font:600 13px 'Manrope',sans-serif;cursor:pointer;opacity:.55;transition:opacity .15s, transform .15s;}
+  .tr-grp b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;} .tr-grp span{display:block;font-size:11.5px;opacity:.9;margin-top:1px;font-variant-numeric:tabular-nums;}
+  .tr-grp.on{opacity:1;box-shadow:0 0 0 2px #fff, 0 0 0 4px currentColor;transform:translateY(-1px);}
+  .tr-grp.g-izh{background:#2F6FB0;color:#2F6FB0;} .tr-grp.g-tuy{background:#C27A1E;color:#C27A1E;} .tr-grp.g-sib{background:#2E8B57;color:#2E8B57;}
+  .tr-grp.g-other{background:#7A5BA6;color:#7A5BA6;} .tr-grp.g-all{background:#4A5B6E;color:#4A5B6E;}
+  .tr-grp b, .tr-grp span{color:#fff;}
+  .tr-grp.g-refresh{background:#fff;color:var(--steel-dk);border:1px solid var(--line);opacity:1;font-size:18px;}
+  @media (max-width:420px){ .tr-groups{grid-template-columns:repeat(3,minmax(0,1fr));} .tr-grp.g-refresh{grid-column:auto;} }
+  .tr-locbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 10px;}
+  .tr-locbtns button{height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--steel-dk);font:700 14px 'Manrope',sans-serif;cursor:pointer;}
+  .tr-locbtns button.primary{background:var(--steel-dk);border-color:transparent;color:#fff;}
+  .tr-card.g-izh{border-left-color:#2F6FB0;} .tr-card.g-tuy{border-left-color:#C27A1E;} .tr-card.g-sib{border-left-color:#2E8B57;} .tr-card.g-other{border-left-color:#7A5BA6;}
+  .tr-head{display:flex;align-items:flex-start;gap:8px;font-size:14.5px;color:var(--ink);line-height:1.35;}
+  .tr-head > b{font-weight:800;}
+  .tr-st{margin-left:auto;flex:none;font-size:11px;font-weight:700;padding:2px 8px;border-radius:7px;background:#EEF2F6;color:var(--steel-dk);}
+  .tr-st.st-onway{background:#E3F1E8;color:#2F5A3D;} .tr-st.st-unloaded{background:#FBF1DF;color:#8A5B12;} .tr-st.st-closed{background:#F1F3F5;color:var(--muted);}
   .tr-sec{background:#fff;border:1px solid var(--line-soft);border-radius:14px;padding:10px 12px;margin-bottom:10px;}
   .tr-sec h4{margin:0 0 6px;font-size:12px;font-weight:700;color:var(--muted);}
   .tr-grid{display:grid;grid-template-columns:1fr;gap:0 10px;}
@@ -513,7 +530,7 @@
 <header>
   <div class="head-row"><p class="eyebrow" id="today"></p></div>
   <h1 id="pageTitle">Инвест</h1>
-  <p class="ver">версия 2026-10-26-1600</p>
+  <p class="ver">версия 2026-10-26-2000</p>
 </header>
 
 <nav class="tabs">
@@ -1346,51 +1363,75 @@ async function trSave(action, row, data){
   if (!d || d.ok === false) throw new Error((d && d.reason) || 'fail');
 }
 
+// Группы клиентов: кнопки на главном экране
+const TR_GROUPS = [
+  { k:'izh',   l:'Ижевск',  test: r => /ижевск|isolotten/i.test(r.client || '') },
+  { k:'tuy',   l:'Туймазы', test: r => /туймаз|карбон/i.test(r.client || '') },
+  { k:'sib',   l:'Сибур',   test: r => /сибур|атырау|atyrau/i.test(r.client || '') },
+  { k:'other', l:'Прочие',  test: r => !TR_GROUPS.slice(0, 3).some(g => g.test(r)) },
+  { k:'all',   l:'Все',     test: () => true }
+];
+const trIsAty = r => /атырау|atyrau/i.test(`${r.route || ''} ${r.client || ''}`);
+function trGroupName(r){
+  if (TR_GROUPS[0].test(r)) return 'Ижевск';
+  if (TR_GROUPS[1].test(r)) return 'Туймазы';
+  if (TR_GROUPS[2].test(r)) return trIsAty(r) ? 'Атырау' : 'Сибур';
+  return r.client || 'Клиент?';
+}
+function trGroupKey(r){ return (TR_GROUPS.slice(0, 4).find(g => g.test(r)) || {}).k || 'other'; }
+// Текущая машина: если заполнен № авто 2 — показываем второе плечо, иначе первое
+const trTruck = r => trHas(r.truck2) ? { truck: r.truck2, car: r.car2 } : { truck: r.truck1, car: r.car1 };
+let TR_GRP = (() => { try{ return localStorage.getItem('tr_grp') || 'all'; }catch(e){ return 'all'; } })();
+let TR_SUB = 'all', TR_SHOW_CLOSED = false;
+
+// Текст локаций для клиента: «номер перевозки, номер авто, локация» — по машинам в пути
+function trLocCopy(list, which){
+  const lines = list.filter(x => x.st === 'onway').map(({ r }) => {
+    const loc = trLocText(which === 'old' ? r.locOld : r.locNew);
+    return [r.num || r.trip, trTruck(r).truck, loc || '—'].map(v => String(v || '').trim()).join(', ');
+  });
+  const sheet = trSheet(`
+    <div class="sh-head"><div><div class="sh-name">${which === 'old' ? 'Локации старые' : 'Локации новые'}</div>
+      <div class="sh-sub">${lines.length} ${plural(lines.length,'машина','машины','машин')} в пути</div></div><button type="button" class="sh-x" aria-label="Закрыть">✕</button></div>
+    ${lines.length ? `<textarea class="inv-in tr-ta" id="trLocTxt" style="min-height:${Math.min(60 + lines.length * 22, 360)}px;font-size:15px">${esc(lines.join('\n'))}</textarea>
+      <div class="tr-savebar" style="position:static"><button type="button" class="primary" id="trLocCopyBtn">Скопировать</button><button type="button" data-close>Закрыть</button></div>`
+      : '<div class="inv-plan">Сейчас нет машин в пути.</div>'}`);
+  const b = sheet.querySelector('#trLocCopyBtn');
+  if (b) b.onclick = async () => {
+    const ta = sheet.querySelector('#trLocTxt');
+    try{ await navigator.clipboard.writeText(ta.value); }catch(err){ ta.select(); document.execCommand('copy'); }
+    b.textContent = 'Скопировано ✓';
+  };
+}
+
 function renderShipments(){
   const today = TR_DATA.today || trToday();
-  const rows = (TR_DATA.rows || []).map(r => { const st = trStage(r, today); return { r, st, gaps: trGaps(r, st), late: trLate(r, st, today) }; });
-  const by = s => rows.filter(x => x.st === s);
-  const cnt = { planned: by('planned').length, onway: by('onway').length, unloaded: by('unloaded').length, closed: by('closed').length };
-  const lateN = rows.filter(x => x.late.length).length;
-  const noInv = rows.filter(x => x.st === 'unloaded' && (!trHas(x.r.invCliSent) || !trHas(x.r.invCarRecv))).length;
-  const waitPay = rows.filter(x => x.st === 'unloaded' && trHas(x.r.invCliSent) && !trHas(x.r.payCliFact)).length;
-  const gapsN = rows.filter(x => x.st !== 'closed' && x.gaps.length).length;
-  // МД за текущий месяц по дате погрузки, по валютам
-  const ym = today.slice(0, 7), mdBy = {};
-  rows.forEach(({ r }) => { const md = trHas(r.md) ? Number(r.md) : trMd(r); if (md !== null && String(r.d1 || '').slice(0, 7) === ym) { const c = r.cur || '€'; mdBy[c] = (mdBy[c] || 0) + md; } });
-  const mdText = Object.entries(mdBy).map(([c, v]) => `${Math.round(v).toLocaleString('ru-RU')} ${esc(c)}`).join(' + ') || '0';
+  const rows = (TR_DATA.rows || []).map(r => { const st = trStage(r, today); return { r, st, gaps: trGaps(r, st), late: trLate(r, st, today), g: trGroupKey(r) }; });
+  const grp = TR_GROUPS.find(g => g.k === TR_GRP) || TR_GROUPS[4];
+  let inGrp = rows.filter(x => grp.test(x.r));
+  if (grp.k === 'sib' && TR_SUB !== 'all') inGrp = inGrp.filter(x => TR_SUB === 'aty' ? trIsAty(x.r) : !trIsAty(x.r));
+  const order = { onway:0, planned:1, unloaded:2, closed:3 };
+  const sorted = [...inGrp].sort((a, b) => order[a.st] - order[b.st] || String(a.r.d1 || '9999').localeCompare(String(b.r.d1 || '9999')));
+  const active = sorted.filter(x => x.st !== 'closed'), closed = sorted.filter(x => x.st === 'closed');
+  const list = TR_SHOW_CLOSED ? sorted : active;
+  const cntActive = k => rows.filter(x => x.st !== 'closed' && (TR_GROUPS.find(g => g.k === k)).test(x.r)).length;
 
-  let list = TR_SEG === 'all' ? rows : by(TR_SEG);
-  if (TR_ONLY_GAPS) list = list.filter(x => x.gaps.length || x.late.length);
-  if (TR_Q){ const q = TR_Q.toLowerCase(); list = list.filter(({ r }) => [r.num, r.orders, r.trip, r.client, r.route, r.car1, r.truck1, r.car2, r.truck2, r.locNew, r.invCarNo, r.invCliNo, r.note].join(' ').toLowerCase().includes(q)); }
-  const key = { planned: x => x.r.d1 || '9999', onway: x => x.r.d1 || '0000', unloaded: x => x.r.unFact || '', closed: x => x.r.payCliFact || '', all: x => x.r.d1 || '' };
-  list = [...list].sort((a, b) => { const ka = key[TR_SEG](a), kb = key[TR_SEG](b); return TR_SEG === 'planned' || TR_SEG === 'onway' ? ka.localeCompare(kb) : kb.localeCompare(ka); });
-
-  const chip = (k, l, n) => `<button type="button" class="ln-chip ${TR_SEG === k ? 'on' : ''}" data-seg="${k}">${l}${n !== undefined ? ' · ' + n : ''}</button>`;
   const m = document.getElementById('pMain');
   m.innerHTML = `
-    <div class="tr-sum">
-      <div class="tr-sum-top"><b>Мои перевозки</b><button type="button" class="or-refresh" aria-label="Обновить">↻</button></div>
-      <div class="tr-kpis">
-        <div><strong>${cnt.onway}</strong><span>в пути</span></div>
-        <div class="${lateN ? 'bad' : ''}"><strong>${lateN}</strong><span>просрочено</span></div>
-        <div class="${noInv ? 'warn' : ''}"><strong>${noInv}</strong><span>без счёта</span></div>
-        <div><strong>${waitPay}</strong><span>ждём оплату</span></div>
-      </div>
-      <div class="tr-md">МД за месяц: <b>${mdText}</b>${gapsN ? ` · <span class="tr-gapn">${gapsN} с пропусками</span>` : ''}</div>
+    <div class="tr-groups">
+      ${TR_GROUPS.map(g => `<button type="button" class="tr-grp g-${g.k} ${TR_GRP === g.k ? 'on' : ''}" data-grp="${g.k}"><b>${g.l}</b><span>${cntActive(g.k)}</span></button>`).join('')}
+      <button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button>
     </div>
-    <button type="button" class="ln-wide" id="trNew" style="margin:0 0 10px">＋ Новая перевозка</button>
-    <div class="ln-chips">${chip('planned','Заявки',cnt.planned)}${chip('onway','В пути',cnt.onway)}${chip('unloaded','Выгружены',cnt.unloaded)}${chip('closed','Закрыты',cnt.closed)}${chip('all','Все')}
-      <button type="button" class="ln-chip ${TR_ONLY_GAPS ? 'on' : ''}" id="trGaps">⚠ только с пропусками</button></div>
-    <input class="inv-in sp-search" id="trSearch" type="search" placeholder="Поиск: заявка, клиент, авто, маршрут, счёт" value="${esc(TR_Q)}">
-    ${list.length ? list.map(x => trCard(x, today)).join('') : '<div class="inv-plan">Здесь пока пусто.</div>'}`;
+    ${grp.k === 'sib' ? `<div class="ln-chips">${[['all','Все'],['aty','Атырау'],['sib','Сибур']].map(([k, l]) => `<button type="button" class="ln-chip ${TR_SUB === k ? 'on' : ''}" data-sub="${k}">${l}</button>`).join('')}</div>` : ''}
+    ${grp.k === 'izh' || grp.k === 'tuy' ? `<div class="tr-locbtns"><button type="button" data-loccopy="old">📋 Локации старые</button><button type="button" data-loccopy="new" class="primary">📋 Локации новые</button></div>` : ''}
+    ${list.length ? list.map(x => trCard(x, today)).join('') : '<div class="inv-plan">Здесь пока пусто.</div>'}
+    ${closed.length ? `<button type="button" class="ln-wide" id="trClosed" style="margin:4px 0 10px">${TR_SHOW_CLOSED ? 'Скрыть закрытые' : `Показать закрытые · ${closed.length}`}</button>` : ''}`;
 
-  m.querySelector('.or-refresh').onclick = () => loadShipments(true);
-  m.querySelector('#trNew').onclick = () => trEdit(null);
-  m.querySelector('#trGaps').onclick = () => { TR_ONLY_GAPS = !TR_ONLY_GAPS; renderShipments(); };
-  m.querySelectorAll('[data-seg]').forEach(b => b.onclick = () => { TR_SEG = b.dataset.seg; renderShipments(); });
-  const s = m.querySelector('#trSearch');
-  s.oninput = () => { TR_Q = s.value; const p = s.selectionStart; renderShipments(); const n = document.getElementById('trSearch'); n.focus(); try{ n.setSelectionRange(p, p); }catch(e){} };
+  m.querySelector('.g-refresh').onclick = () => loadShipments(true);
+  m.querySelectorAll('[data-grp]').forEach(b => b.onclick = () => { TR_GRP = b.dataset.grp; TR_SUB = 'all'; try{ localStorage.setItem('tr_grp', TR_GRP); }catch(e){} renderShipments(); });
+  m.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { TR_SUB = b.dataset.sub; renderShipments(); });
+  m.querySelectorAll('[data-loccopy]').forEach(b => b.onclick = () => trLocCopy(inGrp, b.dataset.loccopy));
+  const cb = m.querySelector('#trClosed'); if (cb) cb.onclick = () => { TR_SHOW_CLOSED = !TR_SHOW_CLOSED; renderShipments(); };
   const byRow = n => (TR_DATA.rows || []).find(r => r.row === +n);
   m.querySelectorAll('[data-edit]').forEach(el => el.onclick = e => { if (e.target.closest('button[data-act]')) return; trEdit(byRow(el.dataset.edit)); });
   m.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => {
@@ -1400,29 +1441,26 @@ function renderShipments(){
   });
 }
 
-function trCard({ r, st, gaps, late }, today){
-  const leg = (n, d, car, truck, net) => (trHas(d) || trHas(car) || trHas(truck) || trHas(net))
-    ? `<div class="tr-leg"><i>${n}</i>${[trHas(d) ? trF(d) : '<em>дата?</em>', trHas(car) ? esc(car) : '<em>перевозчик?</em>', trHas(truck) ? esc(truck) : '<em>№ авто?</em>'].join(' · ')}${trHas(net) ? ` · ${trMoney(net, r.cur)}` : ''}</div>` : '';
+const TR_ST_LABEL = { planned:'заявка', onway:'в пути', unloaded:'выгружен', closed:'закрыт' };
+function trCard({ r, st, gaps, late, g }, today){
+  const { truck, car } = trTruck(r);
+  const head = [`<b>${esc(trGroupName(r))}</b>`, trHas(truck) ? esc(truck) : '<em>№ авто?</em>', trHas(car) ? esc(car) : '<em>перевозчик?</em>'].join(' · ');
   let line = '';
-  if (st === 'planned') { const d = trIso(r.d1) ? trDays(today, r.d1) : null; line = d === null ? 'дата погрузки не указана' : d === 0 ? 'погрузка сегодня' : d === 1 ? 'погрузка завтра' : `погрузка через ${d} ${plural(d,'день','дня','дней')}`; }
+  if (st === 'planned') { const d = trIso(r.d1) ? trDays(today, r.d1) : null; line = d === null ? 'дата погрузки не указана' : d === 0 ? 'погрузка сегодня' : d === 1 ? 'погрузка завтра' : d < 0 ? `погрузка была ${trF(r.d1)}` : `погрузка через ${d} ${plural(d,'день','дня','дней')}`; }
   if (st === 'onway') {
     const age = trLocAge(r.locNew);
-    line = `<span class="tr-loc ${age !== null && age > 24 ? "tr-old" : ""}">📍 ${trHas(r.locNew) ? esc(trLocText(r.locNew)) + (age !== null ? ` <i>· ${trAgoText(age)}</i>` : '') : '<em>локация не указана</em>'}</span>`
-         + `<br>выгрузка план: ${trHas(r.unPlan) ? trF(r.unPlan) : '<em>не указана</em>'}`;
+    line = `<span class="tr-loc ${age !== null && age > 24 ? 'tr-old' : ''}">📍 ${trHas(r.locNew) ? esc(trLocText(r.locNew)) + (age !== null ? ` <i>· ${trAgoText(age)}</i>` : '') : '<em>локация не указана</em>'}</span>`;
   }
   if (st === 'unloaded' || st === 'closed') {
     const f = (ok, l) => `<span class="tr-flag ${ok ? 'ok' : ''}">${ok ? '✓' : '○'} ${l}</span>`;
     line = `выгружен ${trF(r.unFact)}<div class="tr-flags">${f(trHas(r.invCarRecv), 'счёт перевозчика')}${f(trHas(r.payCar), 'оплата перевозчику')}${f(trHas(r.invCliSent), 'счёт клиенту')}${f(trHas(r.payCliFact), 'оплата клиента' + (!trHas(r.payCliFact) && trHas(r.payCliPlan) ? ' · план ' + trF(r.payCliPlan) : ''))}</div>`;
   }
-  const md = trHas(r.md) ? Number(r.md) : trMd(r);
-  const money = [trHas(r.gross) ? 'брутто ' + trMoney(r.gross, r.cur) : '', md !== null ? `МД <b>${trMoney(md, r.cur)}</b>` : ''].filter(Boolean).join(' · ');
+  const sub = [trHas(r.num) ? '№ ' + esc(r.num) : '', esc(r.route || ''), st === 'onway' && trHas(r.unPlan) ? 'выгрузка ' + trF(r.unPlan) : ''].filter(Boolean).join(' · ');
   const btns = st === 'onway' ? `<div class="sp-btns"><button type="button" data-act="loc" data-row="${r.row}">📍 Локация</button><button type="button" data-act="unl" data-row="${r.row}" class="primary">✅ Выгружен</button></div>` : '';
-  return `<div class="tr-card st-${st}${late.length ? ' late' : ''}" data-edit="${r.row}">
-    <div class="sp-top"><b>${esc(r.route || 'Маршрут не указан')}</b><span>${trHas(r.num) ? '№ ' + esc(r.num) : 'стр. ' + r.row}</span></div>
-    <div class="ar-sub">${[r.client, r.orders, r.trip].filter(trHas).map(esc).join(' · ') || '<em>клиент?</em>'}</div>
-    ${leg('1', r.d1, r.car1, r.truck1, r.net1)}${trLeg2(r) ? leg('2', r.d2, r.car2, r.truck2, r.net2) : ''}
+  return `<div class="tr-card g-${g} st-${st}${late.length ? ' late' : ''}" data-edit="${r.row}">
+    <div class="tr-head"><span>${head}</span><span class="tr-st st-${st}">${TR_ST_LABEL[st]}</span></div>
     <div class="tr-line">${line}</div>
-    ${money ? `<div class="ar-sub">${money}</div>` : ''}
+    ${sub ? `<div class="ar-sub">${sub}</div>` : ''}
     ${late.length ? `<div class="tr-late">⏰ ${late.join(' · ')}</div>` : ''}
     ${gaps.length ? `<div class="tr-gaps">Не заполнено: ${gaps.map(k => TR_SHORT[k] || TR_LABEL[k]).join(', ')}</div>` : ''}
     ${trHas(r.manager) || trHas(r.editedBy) ? `<div class="tr-who">${trHas(r.manager) ? 'внёс: ' + esc(r.manager) : ''}${trHas(r.manager) && trHas(r.editedBy) ? ' · ' : ''}${trHas(r.editedBy) ? 'изменил: ' + esc(r.editedBy) : ''}</div>` : ''}
