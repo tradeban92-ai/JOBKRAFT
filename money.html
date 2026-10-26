@@ -1,11 +1,11 @@
-<!-- work-build 2026-10-26-1800 -->
+<!-- money-build 2026-10-26-1600 -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="robots" content="noindex,nofollow">
-<title>Перевозки</title>
+<title>Финансы</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -524,16 +524,11 @@
   .tr-savebar button{height:48px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--steel-dk);font:700 15px 'Manrope',sans-serif;}
   .tr-savebar button.primary{background:var(--steel-dk);border-color:transparent;color:#fff;}
   @media (min-width:800px){ .sheet-bg{justify-content:center;} .sheet{max-width:760px;} .wrap{max-width:900px;margin:0 auto;} }
-  .me{margin:0;font-size:13px;color:var(--muted);} .me a{color:var(--steel);font-weight:600;}
-  .login-box{max-width:420px;margin:30px auto;padding:22px 20px;background:#fff;border:1px solid var(--line-soft);border-radius:18px;text-align:center;}
-  .login-box h2{font-family:'Cormorant Garamond',serif;font-size:28px;margin:0 0 6px;color:var(--steel-dk);}
-  .login-box p{font-size:14px;color:var(--ink);line-height:1.45;margin:0 0 14px;}
-  #tgWidget{min-height:46px;display:flex;justify-content:center;}
 </style>
 </head>
 <body>
 <header>
-  <div class="head-row"><p class="eyebrow" id="today"></p><p class="me" id="meLine"></p></div>
+  <div class="head-row"><p class="eyebrow" id="today"></p></div>
   <h1 id="pageTitle">Инвест</h1>
   <p class="ver">версия 2026-10-26-2100</p>
 </header>
@@ -543,17 +538,14 @@
   <button type="button" data-tab="arrivals">Не прибыли</button>
   <button type="button" data-tab="orders">Открытые</button>
   <button type="button" data-tab="atyrau">Атырау</button>
-  <button type="button" class="tab-more hidden" id="moreBtn" aria-label="Ещё разделы" aria-expanded="false">⋯</button>
+  <button type="button" class="tab-more" id="moreBtn" aria-label="Ещё разделы" aria-expanded="false">⋯</button>
 </nav>
-<div class="more-menu hidden" id="moreMenu"></div>
-<div id="loginBox" class="login-box hidden">
-  <h2>Вход</h2>
-  <p>Войди через свой Telegram. Доступ есть только у тех, кого добавили в список.</p>
-  <div id="tgWidget"></div>
-  <p class="sh-note" id="loginHint" style="margin-top:14px"></p>
+<div class="more-menu hidden" id="moreMenu">
+  <button type="button" data-tab="invest">Инвест</button>
+  <button type="button" data-tab="loan">Кредит</button>
 </div>
 
-<div id="tabInvest" class="hidden">
+<div id="tabInvest">
   <div id="iState" class="state"><b>Загружаю…</b></div>
   <div id="iMain" class="wrap hidden"></div>
 </div>
@@ -588,31 +580,10 @@
 <script>
 // Личные финансы — отдельный бот. Данные: листы «Инвест» и «Кредит», воркфлоу Admin Invest API и Admin Car Loan API
 const API = 'https://unikon777.app.n8n.cloud/webhook';
-// ===== ВХОД: внутри Telegram — как мини-приложение; в браузере — «Войти через Telegram» =====
-const BOT_USERNAME = 'Krafttransatlasbot';   // имя рабочего бота БЕЗ @, например money_sasha_bot
 const tg = window.Telegram?.WebApp;
-const IN_TG = !!(tg && tg.initData);
-let LOGIN = null;
-if (!IN_TG){
-  // Возврат с oauth.telegram.org: данные входа приходят в адресе (?id=...&hash=...)
-  try{
-    const qp = new URLSearchParams(location.search);
-    if (qp.get('id') && qp.get('hash')){
-      const u = {};
-      for (const k of ['id','first_name','last_name','username','photo_url','auth_date','hash']) if (qp.has(k)) u[k] = qp.get(k);
-      localStorage.setItem('work_login', JSON.stringify(u));
-      history.replaceState(null, '', location.pathname);
-    }
-  }catch(e){}
-  try{ LOGIN = JSON.parse(localStorage.getItem('work_login') || 'null'); }catch(e){ LOGIN = null; }
-  if (LOGIN && (Date.now()/1000 - (+LOGIN.auth_date || 0)) > 30*86400) LOGIN = null;   // вход действует 30 дней
-}
-const b64 = s => btoa(unescape(encodeURIComponent(s)));
-const initData = IN_TG ? tg.initData : (LOGIN ? 'login:' + b64(JSON.stringify(LOGIN)) : '');
-const tgUser = IN_TG ? (tg.initDataUnsafe?.user || null) : (LOGIN ? { id: LOGIN.id, first_name: LOGIN.first_name } : null);
+const initData = tg?.initData || '';
+const tgUser = tg?.initDataUnsafe?.user || null;
 try{ tg?.ready(); tg?.expand(); }catch(e){}
-window.onTelegramAuth = user => { try{ localStorage.setItem('work_login', JSON.stringify(user)); }catch(e){} location.reload(); };
-function workLogout(){ try{ localStorage.removeItem('work_login'); }catch(e){} location.reload(); }
 
 const MONTHS = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 const WEEK   = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
@@ -629,12 +600,14 @@ document.getElementById('sheetBg').addEventListener('click', e => { if (e.target
 // ВКЛАДКИ — чтобы добавить новую: кнопка в <nav>, блок <div id="tab…">, строка в TABS
 // ============================================================
 const TABS = {
+  invest: { el:'tabInvest', title:'Инвест',        load: () => loadInvest() },
+  loan:   { el:'tabLoan',   title:'Машина кредит', load: () => loadLoan() },
   shipments: { el:'tabShipments', title:'Перевозки', load: () => loadShipments() },
   arrivals: { el:'tabArrivals', title:'Не прибыли', load: () => loadArrivals() },
   orders:   { el:'tabOrders',   title:'Открытые грузы', load: () => loadOrders('orders') },
   atyrau:   { el:'tabAtyrau',   title:'Атырау — Турция', load: () => loadOrders('atyrau') }
 };
-const MORE_TABS = [];
+const MORE_TABS = ['invest', 'loan'];   // спрятаны за «⋯»
 function setMenu(open){
   document.getElementById('moreMenu').classList.toggle('hidden', !open);
   document.getElementById('moreBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -1623,28 +1596,7 @@ function trAskUnloaded(r){
 
 
 // Открыть сразу нужную вкладку: money.html?tab=loan
-if (!tgUser){
-  document.querySelector('nav.tabs').classList.add('hidden');
-  document.getElementById('pageTitle').textContent = 'Перевозки';
-  document.getElementById('loginBox').classList.remove('hidden');
-  if (BOT_USERNAME.startsWith('ВСТАВЬ')){
-    document.getElementById('loginHint').textContent = 'Сайт ещё не настроен: в work.html не вписано имя бота (BOT_USERNAME).';
-  } else {
-    const sc = document.createElement('script');
-    sc.async = true; sc.src = 'https://telegram.org/js/telegram-widget.js?22';
-    sc.setAttribute('data-telegram-login', BOT_USERNAME);
-    sc.setAttribute('data-size', 'large');
-    sc.setAttribute('data-radius', '12');
-    sc.setAttribute('data-auth-url', location.origin + location.pathname);   // после входа Telegram вернёт сюда с данными в адресе
-    sc.setAttribute('data-request-access', 'write');
-    document.getElementById('tgWidget').appendChild(sc);
-    document.getElementById('loginHint').textContent = 'Если кнопка не появилась или пишет «Bot domain invalid» — в @BotFather у бота нужно сделать /setdomain.';
-  }
-} else {
-  document.getElementById('meLine').innerHTML = `${esc(tgUser.first_name || '')}${IN_TG ? '' : ' · <a href="#" id="logoutLink">выйти</a>'}`;
-  const lo = document.getElementById('logoutLink'); if (lo) lo.onclick = e => { e.preventDefault(); workLogout(); };
-  showTab(new URLSearchParams(location.search).get('tab') || 'shipments');
-}
+showTab(new URLSearchParams(location.search).get('tab') || 'shipments');
 </script>
 </body>
 </html>
