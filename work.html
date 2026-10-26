@@ -577,6 +577,16 @@ const tg = window.Telegram?.WebApp;
 const IN_TG = !!(tg && tg.initData);
 let LOGIN = null;
 if (!IN_TG){
+  // Возврат с oauth.telegram.org: данные входа приходят в адресе (?id=...&hash=...)
+  try{
+    const qp = new URLSearchParams(location.search);
+    if (qp.get('id') && qp.get('hash')){
+      const u = {};
+      for (const k of ['id','first_name','last_name','username','photo_url','auth_date','hash']) if (qp.has(k)) u[k] = qp.get(k);
+      localStorage.setItem('work_login', JSON.stringify(u));
+      history.replaceState(null, '', location.pathname);
+    }
+  }catch(e){}
   try{ LOGIN = JSON.parse(localStorage.getItem('work_login') || 'null'); }catch(e){ LOGIN = null; }
   if (LOGIN && (Date.now()/1000 - (+LOGIN.auth_date || 0)) > 30*86400) LOGIN = null;   // вход действует 30 дней
 }
@@ -1568,7 +1578,7 @@ if (!tgUser){
     sc.setAttribute('data-telegram-login', BOT_USERNAME);
     sc.setAttribute('data-size', 'large');
     sc.setAttribute('data-radius', '12');
-    sc.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    sc.setAttribute('data-auth-url', location.origin + location.pathname);   // после входа Telegram вернёт сюда с данными в адресе
     sc.setAttribute('data-request-access', 'write');
     document.getElementById('tgWidget').appendChild(sc);
     document.getElementById('loginHint').textContent = 'Если кнопка не появилась или пишет «Bot domain invalid» — в @BotFather у бота нужно сделать /setdomain.';
