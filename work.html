@@ -522,6 +522,7 @@
   .tr-warns{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;} .tr-warns span{font-size:12px;font-weight:700;padding:3px 8px;border-radius:7px;background:#FBEEEC;color:#B5483A;}
   .tr-link{font-size:12px;color:#5B4A8A;background:#F1EDF8;border-radius:7px;padding:3px 8px;margin-top:5px;display:inline-block;}
   .tr-card.tr-kid{margin-left:14px;}
+  .tr-reg{background:#E9E2D3;} .tr-clis{max-height:none;}
   .tr-card.tr-cur{box-shadow:0 0 0 2px var(--steel-dk);}
   .tr-groups.tr-groups4{grid-template-columns:repeat(4,minmax(0,1fr)) 44px;}
   @media (max-width:480px){ .tr-groups.tr-groups4{grid-template-columns:repeat(2,minmax(0,1fr)) 44px;} .tr-groups.tr-groups4 .g-refresh{grid-row:1 / span 2;grid-column:3;} }
@@ -554,7 +555,7 @@
 <header>
   <div class="head-row"><p class="eyebrow" id="today"></p><p class="me" id="meLine"></p></div>
   <h1 id="pageTitle">Инвест</h1>
-  <p class="ver">версия 2026-11-03-1400</p>
+  <p class="ver">версия 2026-11-03-1500</p>
 </header>
 
 <nav class="tabs">
@@ -1431,7 +1432,11 @@ function trGroupName(r){
 function trGroupKey(r){ return (TR_GROUPS.slice(0, 4).find(g => g.test(r)) || {}).k || 'other'; }
 const trLs = (k, d) => { try{ return localStorage.getItem(k) || d; }catch(e){ return d; } };
 const trLsSet = (k, v) => { try{ localStorage.setItem(k, v); }catch(e){} };
-let TR_GRP = trLs('tr_grp', 'izh'), TR_SUB = 'all', TR_VIEW = trLs('tr_view', 'list'), TR_OTHER_SORT = trLs('tr_osort', 'date');
+let TR_GRP = trLs('tr_grp', 'izh'), TR_SUB = 'all', TR_VIEW = trLs('tr_view', 'list'), TR_OTHER_SORT = trLs('tr_osort', 'date'), TR_OTHER_CLI = 'all', TR_PAY_REG = trLs('tr_payreg', 'ru');
+// Оплаты «РФ»: кто везёт до склада (маршрут заканчивается Можайском или это главное плечо связанного заказа) + Тузин. Остальные — «Турки».
+const trToWarehouse = r => { const parts = String(r.route || '').split(/\s+-\s+|-|—|–/); const dest = parts[parts.length - 1] || ''; return /можайск|mozhay|mozhai|mojay|склад/i.test(dest); };
+const trIsMainLeg = r => !trMainOrder(r) && trHas(r.order) && (TR_DATA.rows || []).some(x => trMainOrder(x) === String(r.order).trim());
+const trIsRuPay = r => /тузин|tuzin/i.test(r.car || '') || trToWarehouse(r) || trIsMainLeg(r);
 if (TR_GRP === 'all') TR_GRP = 'izh';
 
 // Когда обновляли локацию: '' — сегодня, «от вчера», «от 31.10»; null — неизвестно
@@ -1491,6 +1496,8 @@ function renderShipments(){
   const grp = TR_GROUPS.find(g => g.k === TR_GRP) || TR_GROUPS[0];
   let inGrp = rows.filter(x => grp.test(x.r));
   if (grp.k === 'sib' && TR_SUB !== 'all') inGrp = inGrp.filter(x => TR_SUB === 'aty' ? trIsAty(x.r) : !trIsAty(x.r));
+  const otherClients = grp.k === 'other' ? [...new Set(inGrp.map(x => String(x.r.client || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru')) : [];
+  if (grp.k === 'other' && TR_OTHER_CLI !== 'all') { if (otherClients.includes(TR_OTHER_CLI)) inGrp = inGrp.filter(x => String(x.r.client || '').trim() === TR_OTHER_CLI); else TR_OTHER_CLI = 'all'; }
   // по дате погрузки — от самых ранних (нет даты = сегодня); в «Прочих» можно по клиенту
   const dkey = x => trIso(x.r.d1) ? x.r.d1 : today;
   const byClient = grp.k === 'other' && TR_OTHER_SORT === 'client';
@@ -1515,7 +1522,8 @@ function renderShipments(){
       <button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button>
     </div>
     ${grp.k === 'sib' ? `<div class="ln-chips">${[['all','Все'],['aty','Атырау'],['sib','Сибур']].map(([k, l]) => `<button type="button" class="ln-chip ${TR_SUB === k ? 'on' : ''}" data-sub="${k}">${l}</button>`).join('')}</div>` : ''}
-    ${grp.k === 'other' ? `<div class="ln-chips">${[['date','По дате погрузки'],['client','По клиенту']].map(([k, l]) => `<button type="button" class="ln-chip ${TR_OTHER_SORT === k ? 'on' : ''}" data-osort="${k}">${l}</button>`).join('')}</div>` : ''}
+    ${grp.k === 'other' ? `<div class="ln-chips">${[['date','По дате погрузки'],['client','По клиенту']].map(([k, l]) => `<button type="button" class="ln-chip ${TR_OTHER_SORT === k ? 'on' : ''}" data-osort="${k}">${l}</button>`).join('')}</div>
+      <div class="ln-chips tr-clis"><button type="button" class="ln-chip ${TR_OTHER_CLI === 'all' ? 'on' : ''}" data-ocli="all">Все</button>${otherClients.map(c => `<button type="button" class="ln-chip ${TR_OTHER_CLI === c ? 'on' : ''}" data-ocli="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
     <button type="button" class="ln-wide tr-copyall" data-loccopy="1">📋 Локации для клиента</button>
     ${cards || '<div class="inv-plan">Здесь пока пусто.</div>'}`;
 
@@ -1524,6 +1532,7 @@ function renderShipments(){
   m.querySelectorAll('[data-grp]').forEach(b => b.onclick = () => { TR_GRP = b.dataset.grp; TR_SUB = 'all'; trLsSet('tr_grp', TR_GRP); renderShipments(); });
   m.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { TR_SUB = b.dataset.sub; renderShipments(); });
   m.querySelectorAll('[data-osort]').forEach(b => b.onclick = () => { TR_OTHER_SORT = b.dataset.osort; trLsSet('tr_osort', TR_OTHER_SORT); renderShipments(); });
+  m.querySelectorAll('[data-ocli]').forEach(b => b.onclick = () => { TR_OTHER_CLI = b.dataset.ocli; renderShipments(); });
   m.querySelector('[data-loccopy]').onclick = () => trLocCopy(sorted, grp.k === 'sib');
   trBindCards(m);
 }
@@ -1579,7 +1588,9 @@ function renderCarrierPay(){
   const today = TR_DATA.today || trToday();
   const allRows = trAllRows();
   const nWay = allRows.filter(x => !trIsDone(x.st)).length;
-  const rows = allRows.filter(x => !trIsColleague(x.r) && trHas(x.r.car));   // у коллег оплату не считаем
+  const mineRows = allRows.filter(x => !trIsColleague(x.r) && trHas(x.r.car));   // у коллег оплату не считаем
+  const nRu = mineRows.filter(x => trIsRuPay(x.r) && trIso(x.r.payCar)).length, nTr = mineRows.filter(x => !trIsRuPay(x.r) && trIso(x.r.payCar)).length;
+  const rows = mineRows.filter(x => TR_PAY_REG === 'tr' ? !trIsRuPay(x.r) : trIsRuPay(x.r));
   const pay = rows.filter(x => trIso(x.r.payCar));
   const late = pay.filter(x => x.r.payCar < today && trDays(x.r.payCar, today) <= 14).sort((a, b) => b.r.payCar.localeCompare(a.r.payCar));
   const now = pay.filter(x => x.r.payCar === today);
@@ -1587,7 +1598,7 @@ function renderCarrierPay(){
   const later = pay.filter(x => trDays(today, x.r.payCar) > 7).sort((a, b) => a.r.payCar.localeCompare(b.r.payCar));
   const noTerm = rows.filter(x => (x.st === 'unloaded' || x.st === 'closed') && trHas(x.r.unFact) && !trIso(x.r.payCar) && trDays(x.r.unFact, today) <= 60);
   const noUnl = rows.filter(x => (x.st === 'unloaded' || x.st === 'closed') && !trHas(x.r.unFact));
-  const noInv = allRows.filter(x => !trIsColleague(x.r) && x.st === 'unloaded' && !trHas(trInvOf(x.r)));
+  const noInv = rows.filter(x => x.st === 'unloaded' && !trHas(trInvOf(x.r)));
   const item = x => `<div class="tr-card g-${x.g} st-${x.st}" style="cursor:default">
       <div class="tr-head"><span><b>${esc(x.r.car)}</b> · ${esc(x.r.truck || 'авто?')}</span><span class="tr-st">${trIso(x.r.payCar) ? trF(x.r.payCar) : ''}</span></div>
       <div class="ar-sub">${[esc(trGroupName(x.r)), esc(x.r.route || ''), trHas(x.r.num) ? '№ ' + esc(x.r.num) : '', trHas(x.r.unFact) ? 'выгр. ' + trF(x.r.unFact) : '', trHas(x.r.net) ? 'нетто ' + trMoney(x.r.net) : ''].filter(Boolean).join(' · ')}</div>
@@ -1596,7 +1607,11 @@ function renderCarrierPay(){
   const m = document.getElementById('pMain');
   m.innerHTML = `
     ${trTopBar(nWay, trPayCount())}
-    <div class="tr-paytop"><b>Оплата перевозчикам</b><button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button></div>
+    <div class="tr-who2 tr-reg">
+      <button type="button" class="${TR_PAY_REG !== 'tr' ? 'on' : ''}" data-reg="ru">🇷🇺 РФ <span>${nRu}</span></button>
+      <button type="button" class="${TR_PAY_REG === 'tr' ? 'on' : ''}" data-reg="tr">🇹🇷 Турки <span>${nTr}</span></button>
+    </div>
+    <div class="tr-paytop"><b>Оплата перевозчикам · ${TR_PAY_REG === 'tr' ? 'турки' : 'РФ'}</b><button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button></div>
     <div class="tr-kpis tr-paykpi">
       <div class="${now.length ? 'warn' : ''}"><strong>${now.length}</strong><span>сегодня</span></div>
       <div><strong>${week.length}</strong><span>за 7 дней</span></div>
@@ -1612,6 +1627,7 @@ function renderCarrierPay(){
     ${block('Выгружен — нет счёта', noInv, 'bad', 'В столбце «счет» пусто.')}
     ${!now.length && !week.length && !late.length && !noTerm.length && !noUnl.length && !later.length && !noInv.length ? '<div class="inv-plan">Платежей нет.</div>' : ''}`;
   trBindTop(m);
+  m.querySelectorAll('[data-reg]').forEach(b => b.onclick = () => { TR_PAY_REG = b.dataset.reg; trLsSet('tr_payreg', TR_PAY_REG); renderShipments(); });
   m.querySelector('.g-refresh').onclick = () => loadShipments(true);
   trBindCards(m);
 }
