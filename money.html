@@ -546,7 +546,7 @@
 <header>
   <div class="head-row"><p class="eyebrow" id="today"></p></div>
   <h1 id="pageTitle">Инвест</h1>
-  <p class="ver">версия 2026-11-02-1800</p>
+  <p class="ver">версия 2026-11-03-1130</p>
 </header>
 
 <nav class="tabs">
@@ -1401,7 +1401,7 @@ function trGroupName(r){
 function trGroupKey(r){ return (TR_GROUPS.slice(0, 4).find(g => g.test(r)) || {}).k || 'other'; }
 const trLs = (k, d) => { try{ return localStorage.getItem(k) || d; }catch(e){ return d; } };
 const trLsSet = (k, v) => { try{ localStorage.setItem(k, v); }catch(e){} };
-let TR_GRP = trLs('tr_grp', 'all'), TR_WHO = trLs('tr_who', 'mine'), TR_SUB = 'all', TR_SHOW_CLOSED = false, TR_VIEW = 'list';
+let TR_GRP = trLs('tr_grp', 'all'), TR_SUB = 'all', TR_VIEW = trLs('tr_view', 'list');
 
 // Текст локаций для клиента: «номер, номер авто, локация» — по машинам в пути
 function trLocCopy(list){
@@ -1424,13 +1424,26 @@ function trAllRows(){
   const today = TR_DATA.today || trToday();
   return (TR_DATA.rows || []).map(r => { const st = trStage(r, today); return { r, st, warn: trWarn(r, st, today), g: trGroupKey(r) }; });
 }
-const trWhoOk = r => TR_WHO === 'col' ? trIsColleague(r) : !trIsColleague(r);
+// Верхние вкладки: «В пути» и «Оплаты»
+function trTopBar(nWay, nPay){
+  return `<div class="tr-who2">
+      <button type="button" class="${TR_VIEW !== 'pay' ? 'on' : ''}" data-view="list">🚛 В пути <span>${nWay}</span></button>
+      <button type="button" class="${TR_VIEW === 'pay' ? 'on' : ''}" data-view="pay">💶 Оплаты <span>${nPay}</span></button>
+    </div>`;
+}
+function trBindTop(m){ m.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { TR_VIEW = b.dataset.view; trLsSet('tr_view', TR_VIEW); renderShipments(); window.scrollTo(0, 0); }); }
+const trIsDone = st => st === 'unloaded' || st === 'closed';
+// оплаты перевозчикам: только свои (у коллег не считаем), сегодня + 7 дней + срок прошёл
+function trPayCount(){
+  const today = TR_DATA.today || trToday();
+  return trAllRows().filter(x => !trIsColleague(x.r) && trIso(x.r.payCar) && x.r.payCar <= today && trDays(x.r.payCar, today) <= 14 || (!trIsColleague(x.r) && trIso(x.r.payCar) && x.r.payCar > today && trDays(today, x.r.payCar) <= 7)).length;
+}
 
 function renderShipments(){
   if (TR_VIEW === 'pay') return renderCarrierPay();
   const today = TR_DATA.today || trToday();
   const all = trAllRows();
-  const rows = all.filter(x => trWhoOk(x.r));
+  const rows = all.filter(x => !trIsDone(x.st));          // выгруженные не показываем
   const grp = TR_GROUPS.find(g => g.k === TR_GRP) || TR_GROUPS[4];
   let inGrp = rows.filter(x => grp.test(x.r));
   if (grp.k === 'sib' && TR_SUB !== 'all') inGrp = inGrp.filter(x => TR_SUB === 'aty' ? trIsAty(x.r) : !trIsAty(x.r));
@@ -1440,35 +1453,27 @@ function renderShipments(){
   const mains = new Map(); sorted.forEach(x => { if (trHas(x.r.order)) mains.set(String(x.r.order).trim(), x); });
   const kids = sorted.filter(x => trMainOrder(x.r) && mains.has(trMainOrder(x.r)));
   sorted = sorted.filter(x => !kids.includes(x)).flatMap(x => [x, ...kids.filter(k => trMainOrder(k.r) === String(x.r.order || '').trim())]);
-  const closed = sorted.filter(x => x.st === 'closed');
-  const list = TR_SHOW_CLOSED ? sorted : sorted.filter(x => x.st !== 'closed');
-  const cntActive = k => rows.filter(x => x.st !== 'closed' && (TR_GROUPS.find(g => g.k === k)).test(x.r)).length;
-  const cntWho = w => all.filter(x => x.st !== 'closed' && (w === 'col' ? trIsColleague(x.r) : !trIsColleague(x.r))).length;
-  const hot = rows.filter(x => x.st !== 'closed' && x.warn.length).length;
+  const list = sorted;
+  const cntActive = k => rows.filter(x => (TR_GROUPS.find(g => g.k === k)).test(x.r)).length;
+  const hot = rows.filter(x => x.warn.length).length;
 
   const m = document.getElementById('pMain');
   m.innerHTML = `
-    <div class="tr-who2">
-      <button type="button" class="${TR_WHO === 'mine' ? 'on' : ''}" data-who="mine">Мои <span>${cntWho('mine')}</span></button>
-      <button type="button" class="${TR_WHO === 'col' ? 'on' : ''}" data-who="col">Коллеги <span>${cntWho('col')}</span></button>
-    </div>
-    <div class="ln-chips">${hot ? `<span class="tr-hot">⚠ требуют внимания: ${hot}</span>` : ''}<button type="button" class="ln-chip tr-paybtn" id="trPay">💶 Оплата перевозчикам</button></div>
+    ${trTopBar(rows.length, trPayCount())}
+    ${hot ? `<div class="ln-chips"><span class="tr-hot">⚠ требуют внимания: ${hot}</span></div>` : ''}
     <div class="tr-groups">
       ${TR_GROUPS.map(g => `<button type="button" class="tr-grp g-${g.k} ${TR_GRP === g.k ? 'on' : ''}" data-grp="${g.k}"><b>${g.l}</b><span>${cntActive(g.k)}</span></button>`).join('')}
       <button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button>
     </div>
     ${grp.k === 'sib' ? `<div class="ln-chips">${[['all','Все'],['aty','Атырау'],['sib','Сибур']].map(([k, l]) => `<button type="button" class="ln-chip ${TR_SUB === k ? 'on' : ''}" data-sub="${k}">${l}</button>`).join('')}</div>` : ''}
     ${grp.k !== 'all' && grp.k !== 'other' ? `<button type="button" class="ln-wide tr-copyall" data-loccopy="1">📋 Локации для клиента</button>` : ''}
-    ${list.length ? list.map(x => trCard(x, today)).join('') : '<div class="inv-plan">Здесь пока пусто.</div>'}
-    ${closed.length ? `<button type="button" class="ln-wide" id="trClosed" style="margin:4px 0 10px">${TR_SHOW_CLOSED ? 'Скрыть закрытые' : `Показать закрытые · ${closed.length}`}</button>` : ''}`;
+    ${list.length ? list.map(x => trCard(x, today)).join('') : '<div class="inv-plan">Здесь пока пусто.</div>'}`;
 
   m.querySelector('.g-refresh').onclick = () => loadShipments(true);
-  m.querySelector('#trPay').onclick = () => { TR_VIEW = 'pay'; renderShipments(); window.scrollTo(0, 0); };
-  m.querySelectorAll('[data-who]').forEach(b => b.onclick = () => { TR_WHO = b.dataset.who; trLsSet('tr_who', TR_WHO); renderShipments(); });
+  trBindTop(m);
   m.querySelectorAll('[data-grp]').forEach(b => b.onclick = () => { TR_GRP = b.dataset.grp; TR_SUB = 'all'; trLsSet('tr_grp', TR_GRP); renderShipments(); });
   m.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { TR_SUB = b.dataset.sub; renderShipments(); });
   const lc = m.querySelector('[data-loccopy]'); if (lc) lc.onclick = () => trLocCopy(inGrp);
-  const cb = m.querySelector('#trClosed'); if (cb) cb.onclick = () => { TR_SHOW_CLOSED = !TR_SHOW_CLOSED; renderShipments(); };
   trBindCards(m);
 }
 function trBindCards(m){
@@ -1514,7 +1519,9 @@ function trCard({ r, st, warn, g }, today){
 // ===== ОПЛАТА ПЕРЕВОЗЧИКАМ (дата считается в таблице: выгрузка + отсрочка из «Перевозчики») =====
 function renderCarrierPay(){
   const today = TR_DATA.today || trToday();
-  const rows = trAllRows().filter(x => trWhoOk(x.r) && trHas(x.r.car));
+  const allRows = trAllRows();
+  const nWay = allRows.filter(x => !trIsDone(x.st)).length;
+  const rows = allRows.filter(x => !trIsColleague(x.r) && trHas(x.r.car));   // у коллег оплату не считаем
   const pay = rows.filter(x => trIso(x.r.payCar));
   const late = pay.filter(x => x.r.payCar < today && trDays(x.r.payCar, today) <= 14).sort((a, b) => b.r.payCar.localeCompare(a.r.payCar));
   const now = pay.filter(x => x.r.payCar === today);
@@ -1522,6 +1529,7 @@ function renderCarrierPay(){
   const later = pay.filter(x => trDays(today, x.r.payCar) > 7).sort((a, b) => a.r.payCar.localeCompare(b.r.payCar));
   const noTerm = rows.filter(x => (x.st === 'unloaded' || x.st === 'closed') && trHas(x.r.unFact) && !trIso(x.r.payCar) && trDays(x.r.unFact, today) <= 60);
   const noUnl = rows.filter(x => (x.st === 'unloaded' || x.st === 'closed') && !trHas(x.r.unFact));
+  const noInv = allRows.filter(x => !trIsColleague(x.r) && x.st === 'unloaded' && !trHas(trInvOf(x.r)));
   const item = x => `<div class="tr-card g-${x.g} st-${x.st}" data-edit="${x.r.row}">
       <div class="tr-head"><span><b>${esc(x.r.car)}</b> · ${esc(x.r.truck || 'авто?')}</span><span class="tr-st">${trIso(x.r.payCar) ? trF(x.r.payCar) : ''}</span></div>
       <div class="ar-sub">${[esc(trGroupName(x.r)), esc(x.r.route || ''), trHas(x.r.num) ? '№ ' + esc(x.r.num) : '', trHas(x.r.unFact) ? 'выгр. ' + trF(x.r.unFact) : '', trHas(x.r.net) ? 'нетто ' + trMoney(x.r.net) : ''].filter(Boolean).join(' · ')}</div>
@@ -1529,7 +1537,8 @@ function renderCarrierPay(){
   const block = (title, arr, cls, hint) => arr.length ? `<h3 class="tr-payh ${cls || ''}">${title} · ${arr.length}</h3>${hint ? `<p class="sh-note" style="margin:-4px 2px 8px">${hint}</p>` : ''}${arr.map(item).join('')}` : '';
   const m = document.getElementById('pMain');
   m.innerHTML = `
-    <div class="tr-paytop"><button type="button" class="ln-chip" id="trBack">← Перевозки</button><b>Оплата перевозчикам · ${TR_WHO === 'col' ? 'коллеги' : 'мои'}</b><button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button></div>
+    ${trTopBar(nWay, trPayCount())}
+    <div class="tr-paytop"><b>Оплата перевозчикам</b><button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button></div>
     <div class="tr-kpis tr-paykpi">
       <div class="${now.length ? 'warn' : ''}"><strong>${now.length}</strong><span>сегодня</span></div>
       <div><strong>${week.length}</strong><span>за 7 дней</span></div>
@@ -1542,8 +1551,9 @@ function renderCarrierPay(){
     ${block('Выгружен, но нет даты выгрузки', noUnl, 'warn', 'Поставь дату в столбце «выгружен» — тогда посчитается дата оплаты.')}
     ${block('Нет срока оплаты у перевозчика', noTerm, 'warn', 'В листе «Перевозчики» у этого имени пусто в столбце G (оплата).')}
     ${block('Позже', later)}
-    ${!now.length && !week.length && !late.length && !noTerm.length && !noUnl.length && !later.length ? '<div class="inv-plan">Платежей нет.</div>' : ''}`;
-  m.querySelector('#trBack').onclick = () => { TR_VIEW = 'list'; renderShipments(); };
+    ${block('Выгружен — нет счёта', noInv, 'bad', 'В столбце «счет» пусто.')}
+    ${!now.length && !week.length && !late.length && !noTerm.length && !noUnl.length && !later.length && !noInv.length ? '<div class="inv-plan">Платежей нет.</div>' : ''}`;
+  trBindTop(m);
   m.querySelector('.g-refresh').onclick = () => loadShipments(true);
   trBindCards(m);
 }
