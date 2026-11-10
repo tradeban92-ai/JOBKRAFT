@@ -530,6 +530,18 @@
   .tr-groups.tr-groups4{grid-template-columns:repeat(4,minmax(0,1fr)) 44px;}
   @media (max-width:480px){ .tr-groups.tr-groups4{grid-template-columns:repeat(2,minmax(0,1fr)) 44px;} .tr-groups.tr-groups4 .g-refresh{grid-row:1 / span 2;grid-column:3;} }
   .tr-dt{font-size:12px;color:var(--muted);} .tr-flag.tr-pay{background:#EEF2F6;color:var(--steel-dk);}
+  .tt-wrap{overflow-x:auto;margin:0 -4px;border:1px solid var(--line-soft);border-radius:12px;background:#fff;}
+  .tt{border-collapse:collapse;width:100%;min-width:640px;font-size:13px;}
+  .tt th{position:sticky;top:0;background:#EEF2F6;color:var(--steel-dk);font-weight:700;text-align:left;padding:8px 9px;white-space:nowrap;font-size:12px;}
+  .tt td{padding:7px 9px;border-top:1px solid var(--line-soft);white-space:nowrap;color:var(--ink);}
+  .tt td.tt-b{font-weight:700;} .tt tr.tt-none td{background:#FBEEEC;} .tt tr.tt-none td.tt-b:nth-child(6){color:#B5483A;}
+  .tt tr.tt-old td{background:#FBF6EA;}
+  .sheet.sheet-wide{max-width:1000px;}
+  .tr-btn2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 10px;} .tr-btn2 .ln-wide{margin:0 !important;}
+  .tr-btn2 .ln-wide.alt{background:#fff;color:var(--steel-dk);border:1px solid var(--line);}
+  .cl-card.cl-bad{border-left-color:#B5483A;} .cl-card.cl-warn{border-left-color:#C9962E;} .cl-card.cl-ok{border-left-color:#3F8F5E;}
+  .cl-bad .cl-badge{background:#FBEEEC;color:#B5483A;} .cl-warn .cl-badge{background:#FBF1DF;color:#8A5B12;} .cl-ok .cl-badge{background:#E3F1E8;color:#2F5A3D;}
+  @media (max-width:640px){ .tabs{overflow-x:auto;scrollbar-width:none;} .tabs::-webkit-scrollbar{display:none;} .tabs button{flex:0 0 auto;padding:0 11px;font-size:11.5px;} }
   .tr-sec{background:#fff;border:1px solid var(--line-soft);border-radius:14px;padding:10px 12px;margin-bottom:10px;}
   .tr-sec h4{margin:0 0 6px;font-size:12px;font-weight:700;color:var(--muted);}
   .tr-grid{display:grid;grid-template-columns:1fr;gap:0 10px;}
@@ -558,14 +570,16 @@
 <header>
   <div class="head-row"><p class="eyebrow" id="today"></p><p class="me" id="meLine"></p></div>
   <h1 id="pageTitle">Инвест</h1>
-  <p class="ver">версия 2026-11-10-2000</p>
+  <p class="ver">версия 2026-11-10-2300</p>
 </header>
 
 <nav class="tabs">
   <button type="button" data-tab="shipments" class="on">Перевозки</button>
+  <button type="button" data-tab="payments">Оплаты</button>
   <button type="button" data-tab="arrivals">Не прибыли</button>
   <button type="button" data-tab="orders">Открытые</button>
   <button type="button" data-tab="atyrau">Атырау</button>
+  <button type="button" data-tab="clients">Клиенты</button>
   <button type="button" class="tab-more hidden" id="moreBtn" aria-label="Ещё разделы" aria-expanded="false">⋯</button>
 </nav>
 <div class="more-menu hidden" id="moreMenu"></div>
@@ -591,6 +605,11 @@
   <div id="pMain" class="wrap hidden"></div>
 </div>
 
+<div id="tabPayments" class="hidden">
+  <div id="wState" class="state"><b>Загружаю…</b></div>
+  <div id="wMain" class="wrap hidden"></div>
+</div>
+
 <div id="tabArrivals" class="hidden">
   <div id="aState" class="state"><b>Загружаю…</b></div>
   <div id="aMain" class="wrap hidden"></div>
@@ -604,6 +623,11 @@
 <div id="tabAtyrau" class="hidden">
   <div id="yState" class="state"><b>Загружаю…</b></div>
   <div id="yMain" class="wrap hidden"></div>
+</div>
+
+<div id="tabClients" class="hidden">
+  <div id="cState" class="state"><b>Загружаю…</b></div>
+  <div id="cMain" class="wrap hidden"></div>
 </div>
 
 <div class="sheet-bg hidden" id="sheetBg"><div class="sheet" id="sheet"></div></div>
@@ -653,9 +677,11 @@ document.getElementById('sheetBg').addEventListener('click', e => { if (e.target
 // ============================================================
 const TABS = {
   shipments: { el:'tabShipments', title:'Перевозки', load: () => loadShipments() },
+  payments: { el:'tabPayments', title:'Оплаты перевозчикам', load: () => loadPayments() },
   arrivals: { el:'tabArrivals', title:'Не прибыли', load: () => loadArrivals() },
   orders:   { el:'tabOrders',   title:'Открытые грузы', load: () => loadOrders('orders') },
-  atyrau:   { el:'tabAtyrau',   title:'Атырау — Турция', load: () => loadOrders('atyrau') }
+  atyrau:   { el:'tabAtyrau',   title:'Атырау — Турция', load: () => loadOrders('atyrau') },
+  clients:  { el:'tabClients',  title:'Клиенты', load: () => loadClients() }
 };
 const MORE_TABS = [];
 function setMenu(open){
@@ -1345,6 +1371,8 @@ const trF = iso => trIso(iso) ? arFmt(iso) : esc(iso || '');
 const trHas = v => v !== null && v !== undefined && String(v).trim() !== '';
 const trN = s => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[.\s]+/g, ' ').trim();
 const trIsColleague = r => TR_COLLEAGUES.includes(trN(r.car));
+const trIsIzh = r => /ижевск|isolotten/i.test(r.client || '');
+const trIzhNeedsInv = r => trIsIzh(r) && /сч[её]т/i.test(r.note || '');
 const trUnloadedText = s => /выгруж|выгруз|unload/i.test(String(s || ''));
 const trMoney = v => trHas(v) && isFinite(Number(String(v).replace(/\s/g, '').replace(',', '.'))) ? Number(String(v).replace(/\s/g, '').replace(',', '.')).toLocaleString('ru-RU') : esc(v || '');
 // «The main order is 2610280258052» → номер главного заказа
@@ -1367,8 +1395,9 @@ function trWarn(r, st, today){
   const out = [];
   if (!trHas(r.d1)) out.push('Внести дату погрузки');
   if ((st === 'unloaded' || st === 'closed') && !trHas(r.unFact)) out.push('Внести дату выгрузки');
-  if (st === 'unloaded' && !trHas(trInvOf(r))) out.push('Выгружен — нет счёта');
-  if (/isolotten|ижевск/i.test(r.client || '') && /сч[её]т/i.test(r.note || '') && !trHas(trInvOf(r))) out.push('Выставить счёт');
+  // Ижевск: счёт не выставлен, только если в «прим» есть слово «счёт»; остальные — по столбцу «счет»
+  if (trIzhNeedsInv(r)) out.push('Выставить счёт');
+  else if (st === 'unloaded' && !trIsIzh(r) && !trHas(trInvOf(r))) out.push('Выгружен — нет счёта');
   if (st === 'onway' && !trHas(r.loc)) out.push('Нет локации');
   if (st === 'onway'){ const h = trLocAge(r); if (h !== null && h > 48) out.push(`Локация не обновлялась ${trAgoText(h).replace(' назад', '')}`); }
   if (!trHas(r.truck)) out.push('Нет номера авто');
@@ -1475,7 +1504,7 @@ function trAllRows(){
 }
 const trIsDone = st => st === 'unloaded' || st === 'closed';
 // «Важное»: Ижевск без выставленного счёта + всё, где что-то написано в «прим»
-const trIsImportant = r => (TR_GROUPS[0].test(r) && !trHas(r.inv)) || trHas(r.note);
+const trIsImportant = r => trHas(r.note);   // всё, где что-то написано в «прим» (у Ижевска «счёт» в «прим» = счёт не выставлен)
 function renderShipments(){
   const today = TR_DATA.today || trToday();
   const all = trAllRows();
@@ -1502,8 +1531,8 @@ function renderShipments(){
     </div>
     ${grp && grp.k === 'sib' ? `<div class="ln-chips">${[['all','Все'],['aty','Атырау'],['sib','Сибур']].map(([k, l]) => `<button type="button" class="ln-chip ${TR_SUB === k ? 'on' : ''}" data-sub="${k}">${l}</button>`).join('')}</div>` : ''}
     ${grp && grp.k === 'other' && otherClients.length ? `<div class="ln-chips tr-clis"><button type="button" class="ln-chip ${TR_OTHER_CLI === 'all' ? 'on' : ''}" data-ocli="all">Все</button>${otherClients.map(c => `<button type="button" class="ln-chip ${TR_OTHER_CLI === c ? 'on' : ''}" data-ocli="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
-    ${isImp ? '<p class="sh-note" style="margin:0 2px 10px">Ижевск без выставленного счёта и все перевозки, где что-то написано в «прим» (в том числе выгруженные).</p>'
-      : `<button type="button" class="ln-wide tr-copyall" data-loccopy="1">📋 Локации для клиента</button>`}
+    ${isImp ? '<p class="sh-note" style="margin:0 2px 10px">Все перевозки, где что-то написано в «прим» (в том числе выгруженные). У Ижевска слово «счёт» в «прим» = счёт не выставлен.</p>'
+      : `<div class="tr-btn2"><button type="button" class="ln-wide" data-loccopy="1">📋 Локации</button><button type="button" class="ln-wide alt" data-table="1">▦ Таблица</button></div>`}
     ${cards || '<div class="inv-plan">Здесь пока пусто.</div>'}`;
 
   m.querySelector('.g-refresh').onclick = () => loadShipments(true);
@@ -1511,6 +1540,7 @@ function renderShipments(){
   m.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { TR_SUB = b.dataset.sub; renderShipments(); });
   m.querySelectorAll('[data-ocli]').forEach(b => b.onclick = () => { TR_OTHER_CLI = b.dataset.ocli; renderShipments(); });
   const lc = m.querySelector('[data-loccopy]'); if (lc) lc.onclick = () => trLocCopy(sorted, grp && grp.k === 'sib');
+  const tb = m.querySelector('[data-table]'); if (tb) tb.onclick = () => trTable(sorted, grp.k === 'other' && TR_OTHER_CLI !== 'all' ? TR_OTHER_CLI : grp.l);
   trBindCards(m);
 }
 function trBindCards(m){
@@ -1528,12 +1558,12 @@ function trCard({ r, st, warn, g }, today, imp){
   const dt = st === 'unloaded' ? (trHas(r.unFact) ? 'выгружен ' + trF(r.unFact) : '') : trDaysText(r, today);
   const line = `<span class="tr-loc ${age !== null && age > 24 && st !== 'unloaded' ? 'tr-old' : ''}">📍 ${trHas(r.loc) ? esc(r.loc) + (age !== null ? ` <i>· ${trAgoText(age)}</i>` : '') : '<em>локация не указана</em>'}</span>${dt ? ` <span class="tr-dt">· ${dt}</span>` : ''}`;
   const sub = [trHas(r.num) ? '№ ' + esc(r.num) : '', esc(r.route || ''), trHas(r.d1) ? 'погр. ' + trF(r.d1) : ''].filter(Boolean).join(' · ');
-  const why = imp ? [TR_GROUPS[0].test(r) && !trHas(r.inv) ? 'Ижевск — счёт не выставлен' : ''].filter(Boolean) : [];
-  const badges = [...why, ...warn.filter(w => !why.length || w !== 'Выставить счёт')];
+  const badges = warn;
   return `<div class="tr-card g-${g} st-${st}${badges.length ? ' late' : ''}">
     <div class="tr-head"><span>${head}</span><span class="tr-st st-${st}">${TR_ST_LABEL[st]}</span></div>
     <div class="tr-line">${line}</div>
     ${sub ? `<div class="ar-sub">${sub}</div>` : ''}
+    ${trHas(r.link) ? `<div class="ar-sub">🏭 до склада: <b>${esc(r.link)}</b></div>` : ''}
     ${trHas(r.note) ? `<div class="ar-sub tr-note">💬 ${esc(r.note)}</div>` : ''}
     ${badges.length ? `<div class="tr-warns">${badges.map(w => `<span>${esc(w)}</span>`).join('')}</div>` : ''}
     ${st === 'onway' || st === 'planned' ? `<div class="sp-btns"><button type="button" data-act="loc" data-row="${r.row}" class="primary" style="grid-column:1/-1">📍 Локация</button></div>` : ''}
@@ -1542,6 +1572,7 @@ function trCard({ r, st, warn, g }, today, imp){
 
 function trSheet(html){
   const sheet = document.getElementById('sheet');
+  sheet.classList.remove('sheet-wide');
   sheet.innerHTML = html; sheet.scrollTop = 0;
   sheet.querySelectorAll('.sh-x, [data-close]').forEach(b => b.onclick = closeClient);
   document.getElementById('sheetBg').classList.remove('hidden');
@@ -1633,6 +1664,157 @@ function trAskUnloaded(r){
     try{ await trSave(r.row, { loc: 'выгружен', unFact: d }); closeClient(); await loadShipments(true); }
     catch(e){ btns.forEach(b => b.disabled = false); sheet.querySelector('#trErr').innerHTML = '<p class="bc-res bad">Не удалось сохранить.</p>'; }
   };
+}
+
+// ============================================================
+// ОПЛАТЫ — лист «оплаты» (заполняется скриптом из Solo по Trip). Воркфлоу Money Payments API
+// ============================================================
+let PY_DATA = null;
+function pyState(title, text){
+  const st = document.getElementById('wState');
+  if (!title){ st.classList.add('hidden'); return; }
+  st.innerHTML = `<b>${title}</b>${text || ''}`; st.classList.remove('hidden');
+  document.getElementById('wMain').classList.add('hidden');
+}
+async function loadPayments(force){
+  if (!tgUser){ pyState('Нужно войти', 'Войдите через Telegram.'); return; }
+  if (!PY_DATA || force) pyState('Загружаю…');
+  try{
+    const r = await fetch(`${API}/money-payments?init_data=${encodeURIComponent(initData)}&user_id=${tgUser.id}`);
+    const raw = await r.json(); const d = Array.isArray(raw) ? raw[0] : raw;
+    if (!d || d.ok === false){ pyState('Нет доступа', d && d.user_id ? `Твой Telegram ID: <b style="display:inline;font:inherit">${esc(d.user_id)}</b>` : 'Раздел только для тех, кто есть в списке доступа.'); return; }
+    PY_DATA = d; pyState('');
+    document.getElementById('wMain').classList.remove('hidden');
+    renderPayments();
+  }catch(e){
+    if (!PY_DATA) pyState('Нет связи с сервисом', 'Включите воркфлоу <b style="display:inline;font:inherit;color:inherit">Money Payments API</b> в n8n.');
+  }
+}
+const pyPaid = r => /оплач|paid/i.test(r.note || '');      // в «прим» написано «оплачено» — платёж закрыт
+let PY_SHOW_PAID = false;
+function renderPayments(){
+  const today = PY_DATA.today || trToday();
+  const rows = (PY_DATA.rows || []).map(r => ({ ...r }));
+  const open = rows.filter(r => !pyPaid(r)), paid = rows.filter(pyPaid);
+  const late  = open.filter(r => trIso(r.pay) && r.pay < today).sort((a, b) => a.pay.localeCompare(b.pay));
+  const now   = open.filter(r => r.pay === today);
+  const week  = open.filter(r => trIso(r.pay) && r.pay > today && trDays(today, r.pay) <= 7).sort((a, b) => a.pay.localeCompare(b.pay));
+  const later = open.filter(r => trIso(r.pay) && trDays(today, r.pay) > 7).sort((a, b) => a.pay.localeCompare(b.pay));
+  const noTerm = open.filter(r => trIso(r.unl) && !trIso(r.pay));
+  const way   = open.filter(r => !trIso(r.unl));
+  const noInv = open.filter(r => trIso(r.unl) && !trHas(r.inv));
+  const card = r => {
+    const d = trIso(r.pay) ? trDays(today, r.pay) : null;
+    const when = d === null ? '' : d < 0 ? `просрочено ${-d} дн.` : d === 0 ? 'сегодня' : `через ${d} дн.`;
+    return `<div class="tr-card py-card${d !== null && d < 0 ? ' late' : ''}">
+      <div class="tr-head"><span><b>${esc(r.car || 'перевозчик?')}</b> · ${esc(r.truck || 'авто?')}</span><span class="tr-st${d !== null && d <= 0 ? ' st-unloaded' : ''}">${trIso(r.pay) ? trF(r.pay) : '—'}</span></div>
+      <div class="ar-sub">${[trHas(r.trip) ? 'TRIP ' + esc(r.trip) : '', esc(r.client || ''), esc(r.route || '')].filter(Boolean).join(' · ')}</div>
+      <div class="tr-flags" style="margin-top:6px">
+        <span class="tr-flag ${trIso(r.unl) ? 'ok' : ''}">${trIso(r.unl) ? 'выгружен ' + trF(r.unl) : '○ не выгружен'}</span>
+        <span class="tr-flag ${trHas(r.inv) ? 'ok' : ''}">${trHas(r.inv) ? '✓ счёт ' + esc(r.inv) : '○ счёта нет'}</span>
+        ${when ? `<span class="tr-flag tr-pay">💶 ${when}</span>` : ''}
+      </div>
+      ${trHas(r.note) ? `<div class="ar-sub tr-note">💬 ${esc(r.note)}</div>` : ''}
+    </div>`;
+  };
+  const block = (title, arr, cls, hint) => arr.length ? `<h3 class="tr-payh ${cls || ''}">${title} · ${arr.length}</h3>${hint ? `<p class="sh-note" style="margin:-4px 2px 8px">${hint}</p>` : ''}${arr.map(card).join('')}` : '';
+  const m = document.getElementById('wMain');
+  m.innerHTML = `
+    <div class="tr-paytop"><b>Оплата перевозчикам</b><button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button></div>
+    <div class="tr-kpis tr-paykpi">
+      <div class="${late.length ? 'bad' : ''}"><strong>${late.length}</strong><span>просрочено</span></div>
+      <div class="${now.length ? 'warn' : ''}"><strong>${now.length}</strong><span>сегодня</span></div>
+      <div><strong>${week.length}</strong><span>за 7 дней</span></div>
+      <div class="${noInv.length ? 'warn' : ''}"><strong>${noInv.length}</strong><span>нет счёта</span></div>
+    </div>
+    ${block('Просрочено', late, 'bad', 'Если уже оплатил — напиши «оплачено» в «прим», платёж уйдёт из списка.')}
+    ${block('Платить сегодня', now, 'warn')}
+    ${block('Ближайшие 7 дней', week)}
+    ${block('Выгружен, срока оплаты нет', noTerm, 'warn', 'У перевозчика нет срока в «Перевозчики» (столбец G) или имя не нашлось.')}
+    ${block('Позже', later)}
+    ${block('Ещё в пути', way)}
+    ${!rows.length ? '<div class="inv-plan">В листе «оплаты» пока пусто. Строки появляются сами, когда в Solo вносишь Trip.</div>' : ''}
+    ${paid.length ? `<button type="button" class="ln-wide" id="pyPaid" style="margin:4px 0 10px">${PY_SHOW_PAID ? 'Скрыть оплаченные' : `Оплаченные · ${paid.length}`}</button>${PY_SHOW_PAID ? paid.map(card).join('') : ''}` : ''}`;
+  m.querySelector('.g-refresh').onclick = () => loadPayments(true);
+  const pb = m.querySelector('#pyPaid'); if (pb) pb.onclick = () => { PY_SHOW_PAID = !PY_SHOW_PAID; renderPayments(); };
+}
+
+// ============================================================
+// КЛИЕНТЫ — когда последний раз грузили (по листу Solo, те же данные, что «Перевозки»)
+// ============================================================
+function clState(title, text){
+  const st = document.getElementById('cState');
+  if (!title){ st.classList.add('hidden'); return; }
+  st.innerHTML = `<b>${title}</b>${text || ''}`; st.classList.remove('hidden');
+  document.getElementById('cMain').classList.add('hidden');
+}
+async function loadClients(force){
+  if (!tgUser){ clState('Нужно войти', 'Войдите через Telegram.'); return; }
+  if (!TR_DATA || force){
+    clState('Загружаю…');
+    try{
+      const r = await fetch(`${API}/money-trips?init_data=${encodeURIComponent(initData)}&user_id=${tgUser.id}`);
+      const raw = await r.json(); const d = Array.isArray(raw) ? raw[0] : raw;
+      if (!d || d.ok === false){ clState('Нет доступа', 'Раздел только для тех, кто есть в списке доступа.'); return; }
+      TR_DATA = d;
+    }catch(e){ clState('Нет связи с сервисом', 'Включите воркфлоу <b style="display:inline;font:inherit;color:inherit">Money Trips API</b> в n8n.'); return; }
+  }
+  clState(''); document.getElementById('cMain').classList.remove('hidden');
+  renderClients();
+}
+function renderClients(){
+  const today = TR_DATA.today || trToday();
+  const map = new Map();
+  for (const r of TR_DATA.rows || []){
+    const name = String(r.client || '').trim(); if (!name) continue;
+    const k = trN(name);
+    const c = map.get(k) || { name, last: '', total: 0, d30: 0, way: 0, routes: new Map() };
+    c.total++;
+    if (trIso(r.d1)){
+      if (r.d1 > c.last && r.d1 <= today) c.last = r.d1;
+      if (r.d1 <= today && trDays(r.d1, today) <= 30) c.d30++;
+    }
+    const st = trStage(r, today); if (st === 'onway' || st === 'planned') c.way++;
+    if (trHas(r.route)) c.routes.set(r.route, (c.routes.get(r.route) || 0) + 1);
+    map.set(k, c);
+  }
+  const list = [...map.values()].map(c => ({ ...c, ago: c.last ? trDays(c.last, today) : null }))
+    .sort((a, b) => (b.ago ?? 9999) - (a.ago ?? 9999));
+  const cls = a => a === null ? 'bad' : a > 30 ? 'bad' : a > 14 ? 'warn' : 'ok';
+  const m = document.getElementById('cMain');
+  m.innerHTML = `
+    <div class="tr-paytop"><b>Когда последний раз грузили</b><button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button></div>
+    <p class="sh-note" style="margin:-4px 2px 10px">Сверху — кого дольше всего не грузили. Красный — больше 30 дней, жёлтый — больше 14.</p>
+    ${list.map(c => `<div class="tr-card cl-card cl-${cls(c.ago)}">
+      <div class="tr-head"><span><b>${esc(c.name)}</b></span><span class="tr-st cl-badge">${c.ago === null ? 'нет даты' : c.ago === 0 ? 'сегодня' : c.ago + ' ' + plural(c.ago, 'день', 'дня', 'дней')}</span></div>
+      <div class="ar-sub">${c.last ? 'последняя погрузка ' + trF(c.last) : 'дат погрузки нет'} · за 30 дней: ${c.d30} · сейчас в пути: ${c.way} · всего: ${c.total}</div>
+      ${c.routes.size ? `<div class="ar-sub">${[...c.routes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([r, n]) => esc(r) + (n > 1 ? ` ×${n}` : '')).join(' · ')}</div>` : ''}
+    </div>`).join('') || '<div class="inv-plan">Клиентов пока нет.</div>'}`;
+  m.querySelector('.g-refresh').onclick = () => loadClients(true);
+}
+
+// ============================================================
+// ТАБЛИЦА по группе клиента — все машины в пути одним взглядом
+// ============================================================
+function trTable(list, title){
+  const today = TR_DATA.today || trToday();
+  const rows = list.map(x => x.r);
+  const sheet = trSheet(`
+    <div class="sh-head"><div><div class="sh-name">${esc(title)}</div>
+      <div class="sh-sub">${rows.length} ${plural(rows.length,'машина','машины','машин')} · без локации: ${rows.filter(r => !trHas(r.loc)).length}</div></div><button type="button" class="sh-x" aria-label="Закрыть">✕</button></div>
+    <div class="tt-wrap"><table class="tt">
+      <thead><tr><th>№ заявки</th><th>Авто</th><th>Перевозчик</th><th>Погрузка</th><th>Дней</th><th>Локация</th><th>Обновлено</th></tr></thead>
+      <tbody>${rows.map(r => {
+        const w = trLocWhen(r, today);
+        const n = trHas(r.days) && isFinite(+r.days) ? +r.days : (trIso(r.d1) ? trDays(r.d1, today) : null);
+        const cls = !trHas(r.loc) ? 'tt-none' : (w && w !== '' ? 'tt-old' : '');
+        return `<tr class="${cls}">
+          <td>${esc(r.num || '')}</td><td class="tt-b">${esc(r.truck || '—')}</td><td>${esc(r.car || '')}</td>
+          <td>${trIso(r.d1) ? trF(r.d1) : '<em>нет</em>'}</td><td>${n === null ? '' : n}</td>
+          <td class="tt-b">${trHas(r.loc) ? esc(r.loc) : 'жду локацию'}</td><td>${w === null ? '' : w === '' ? 'сегодня' : esc(w.replace('от ', ''))}</td></tr>`;
+      }).join('') || '<tr><td colspan="7">Пусто</td></tr>'}</tbody>
+    </table></div>`);
+  sheet.classList.add('sheet-wide');
 }
 
 // Открыть сразу нужную вкладку: money.html?tab=loan
