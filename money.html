@@ -521,7 +521,10 @@
   .tr-copyall{margin:0 0 10px !important;}
   .tr-warns{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;} .tr-warns span{font-size:12px;font-weight:700;padding:3px 8px;border-radius:7px;background:#FBEEEC;color:#B5483A;}
   .tr-link{font-size:12px;color:#5B4A8A;background:#F1EDF8;border-radius:7px;padding:3px 8px;margin-top:5px;display:inline-block;}
-  .tr-card.tr-kid{margin-left:14px;}
+  .tr-groups.tr-groups5{grid-template-columns:repeat(5,minmax(0,1fr)) 44px;}
+  .tr-grp.g-imp{background:#B5483A;color:#B5483A;}
+  @media (max-width:520px){ .tr-groups.tr-groups5{grid-template-columns:repeat(3,minmax(0,1fr));} .tr-groups.tr-groups5 .g-refresh{width:auto;} }
+  .tr-note{color:var(--ink);}
   .tr-reg{background:#E9E2D3;} .tr-clis{max-height:none;}
   .tr-card.tr-cur{box-shadow:0 0 0 2px var(--steel-dk);}
   .tr-groups.tr-groups4{grid-template-columns:repeat(4,minmax(0,1fr)) 44px;}
@@ -550,7 +553,7 @@
 <header>
   <div class="head-row"><p class="eyebrow" id="today"></p></div>
   <h1 id="pageTitle">Инвест</h1>
-  <p class="ver">версия 2026-11-03-1500</p>
+  <p class="ver">версия 2026-11-10-2000</p>
 </header>
 
 <nav class="tabs">
@@ -1318,7 +1321,7 @@ const trIsColleague = r => TR_COLLEAGUES.includes(trN(r.car));
 const trUnloadedText = s => /выгруж|выгруз|unload/i.test(String(s || ''));
 const trMoney = v => trHas(v) && isFinite(Number(String(v).replace(/\s/g, '').replace(',', '.'))) ? Number(String(v).replace(/\s/g, '').replace(',', '.')).toLocaleString('ru-RU') : esc(v || '');
 // «The main order is 2610280258052» → номер главного заказа
-const trMainOrder = r => { const m = String(r.link || '').match(/main\s+order\s+is\s+(\d{6,})/i); return m && m[1] !== String(r.order || '').trim() ? m[1] : ''; };
+const trMainOrder = r => '';   // связанные заказы больше не используются
 const trByOrder = o => (TR_DATA.rows || []).find(x => String(x.order || '').trim() === o);
 // счёт: свой или (для внутреннего заказа) — главного
 const trInvOf = r => trHas(r.inv) ? r.inv : (trMainOrder(r) && trByOrder(trMainOrder(r)) ? trByOrder(trMainOrder(r)).inv || '' : '');
@@ -1405,11 +1408,7 @@ function trGroupName(r){
 function trGroupKey(r){ return (TR_GROUPS.slice(0, 4).find(g => g.test(r)) || {}).k || 'other'; }
 const trLs = (k, d) => { try{ return localStorage.getItem(k) || d; }catch(e){ return d; } };
 const trLsSet = (k, v) => { try{ localStorage.setItem(k, v); }catch(e){} };
-let TR_GRP = trLs('tr_grp', 'izh'), TR_SUB = 'all', TR_VIEW = trLs('tr_view', 'list'), TR_OTHER_SORT = trLs('tr_osort', 'date'), TR_OTHER_CLI = 'all', TR_PAY_REG = trLs('tr_payreg', 'ru');
-// Оплаты «РФ»: кто везёт до склада (маршрут заканчивается Можайском или это главное плечо связанного заказа) + Тузин. Остальные — «Турки».
-const trToWarehouse = r => { const parts = String(r.route || '').split(/\s+-\s+|-|—|–/); const dest = parts[parts.length - 1] || ''; return /можайск|mozhay|mozhai|mojay|склад/i.test(dest); };
-const trIsMainLeg = r => !trMainOrder(r) && trHas(r.order) && (TR_DATA.rows || []).some(x => trMainOrder(x) === String(r.order).trim());
-const trIsRuPay = r => /тузин|tuzin/i.test(r.car || '') || trToWarehouse(r) || trIsMainLeg(r);
+let TR_GRP = trLs('tr_grp', 'izh'), TR_SUB = 'all', TR_OTHER_CLI = 'all';
 if (TR_GRP === 'all') TR_GRP = 'izh';
 
 // Когда обновляли локацию: '' — сегодня, «от вчера», «от 31.10»; null — неизвестно
@@ -1447,66 +1446,44 @@ function trAllRows(){
   const today = TR_DATA.today || trToday();
   return (TR_DATA.rows || []).map(r => { const st = trStage(r, today); return { r, st, warn: trWarn(r, st, today), g: trGroupKey(r) }; });
 }
-// Верхние вкладки: «В пути» и «Оплаты»
-function trTopBar(nWay, nPay){
-  return `<div class="tr-who2">
-      <button type="button" class="${TR_VIEW !== 'pay' ? 'on' : ''}" data-view="list">🚛 В пути <span>${nWay}</span></button>
-      <button type="button" class="${TR_VIEW === 'pay' ? 'on' : ''}" data-view="pay">💶 Оплаты <span>${nPay}</span></button>
-    </div>`;
-}
-function trBindTop(m){ m.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { TR_VIEW = b.dataset.view; trLsSet('tr_view', TR_VIEW); renderShipments(); window.scrollTo(0, 0); }); }
 const trIsDone = st => st === 'unloaded' || st === 'closed';
-// оплаты перевозчикам: только свои (у коллег не считаем), сегодня + 7 дней + срок прошёл
-function trPayCount(){
-  const today = TR_DATA.today || trToday();
-  return trAllRows().filter(x => !trIsColleague(x.r) && trIso(x.r.payCar) && x.r.payCar <= today && trDays(x.r.payCar, today) <= 14 || (!trIsColleague(x.r) && trIso(x.r.payCar) && x.r.payCar > today && trDays(today, x.r.payCar) <= 7)).length;
-}
-
+// «Важное»: Ижевск без выставленного счёта + всё, где что-то написано в «прим»
+const trIsImportant = r => (TR_GROUPS[0].test(r) && !trHas(r.inv)) || trHas(r.note);
 function renderShipments(){
-  if (TR_VIEW === 'pay') return renderCarrierPay();
   const today = TR_DATA.today || trToday();
-  const rows = trAllRows().filter(x => !trIsDone(x.st));          // выгруженные не показываем
-  const grp = TR_GROUPS.find(g => g.k === TR_GRP) || TR_GROUPS[0];
-  let inGrp = rows.filter(x => grp.test(x.r));
-  if (grp.k === 'sib' && TR_SUB !== 'all') inGrp = inGrp.filter(x => TR_SUB === 'aty' ? trIsAty(x.r) : !trIsAty(x.r));
-  const otherClients = grp.k === 'other' ? [...new Set(inGrp.map(x => String(x.r.client || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru')) : [];
-  if (grp.k === 'other' && TR_OTHER_CLI !== 'all') { if (otherClients.includes(TR_OTHER_CLI)) inGrp = inGrp.filter(x => String(x.r.client || '').trim() === TR_OTHER_CLI); else TR_OTHER_CLI = 'all'; }
-  // по дате погрузки — от самых ранних (нет даты = сегодня); в «Прочих» можно по клиенту
+  const all = trAllRows();
+  const rows = all.filter(x => !trIsDone(x.st));          // выгруженные не показываем
+  const imp = all.filter(x => x.st !== 'closed' && trIsImportant(x.r));
+  const isImp = TR_GRP === 'imp';
+  const grp = isImp ? null : (TR_GROUPS.find(g => g.k === TR_GRP && g.k !== 'all') || TR_GROUPS[0]);
+  let inGrp = isImp ? imp : rows.filter(x => grp.test(x.r));
+  if (grp && grp.k === 'sib' && TR_SUB !== 'all') inGrp = inGrp.filter(x => TR_SUB === 'aty' ? trIsAty(x.r) : !trIsAty(x.r));
+  const otherClients = grp && grp.k === 'other' ? [...new Set(inGrp.map(x => String(x.r.client || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru')) : [];
+  if (grp && grp.k === 'other' && TR_OTHER_CLI !== 'all') { if (otherClients.includes(TR_OTHER_CLI)) inGrp = inGrp.filter(x => String(x.r.client || '').trim() === TR_OTHER_CLI); else TR_OTHER_CLI = 'all'; }
+  // по дате погрузки — от самых ранних (нет даты = сегодня)
   const dkey = x => trIso(x.r.d1) ? x.r.d1 : today;
-  const byClient = grp.k === 'other' && TR_OTHER_SORT === 'client';
-  let sorted = [...inGrp].sort((a, b) => (byClient ? String(a.r.client || '').localeCompare(String(b.r.client || ''), 'ru') : 0) || dkey(a).localeCompare(dkey(b)));
-  // внутренние заказы ставим сразу после главного
-  const mains = new Map(); sorted.forEach(x => { if (trHas(x.r.order)) mains.set(String(x.r.order).trim(), x); });
-  const kids = sorted.filter(x => trMainOrder(x.r) && mains.has(trMainOrder(x.r)));
-  sorted = sorted.filter(x => !kids.includes(x)).flatMap(x => [x, ...kids.filter(k => trMainOrder(k.r) === String(x.r.order || '').trim())]);
+  const sorted = [...inGrp].sort((a, b) => dkey(a).localeCompare(dkey(b)));
   const cnt = k => rows.filter(x => (TR_GROUPS.find(g => g.k === k)).test(x.r)).length;
-  let lastClient = null;
-  const cards = sorted.map(x => {
-    let h = '';
-    if (byClient && x.r.client !== lastClient){ lastClient = x.r.client; h = `<h3 class="tr-payh">${esc(x.r.client || 'Без клиента')}</h3>`; }
-    return h + trCard(x, today);
-  }).join('');
+  const cards = sorted.map(x => trCard(x, today, isImp)).join('');
 
   const m = document.getElementById('pMain');
   m.innerHTML = `
-    ${trTopBar(rows.length, trPayCount())}
-    <div class="tr-groups tr-groups4">
+    <div class="tr-groups tr-groups5">
       ${TR_GROUPS.filter(g => g.k !== 'all').map(g => `<button type="button" class="tr-grp g-${g.k} ${TR_GRP === g.k ? 'on' : ''}" data-grp="${g.k}"><b>${g.l}</b><span>${cnt(g.k)}</span></button>`).join('')}
+      <button type="button" class="tr-grp g-imp ${isImp ? 'on' : ''}" data-grp="imp"><b>⚠ Важное</b><span>${imp.length}</span></button>
       <button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button>
     </div>
-    ${grp.k === 'sib' ? `<div class="ln-chips">${[['all','Все'],['aty','Атырау'],['sib','Сибур']].map(([k, l]) => `<button type="button" class="ln-chip ${TR_SUB === k ? 'on' : ''}" data-sub="${k}">${l}</button>`).join('')}</div>` : ''}
-    ${grp.k === 'other' ? `<div class="ln-chips">${[['date','По дате погрузки'],['client','По клиенту']].map(([k, l]) => `<button type="button" class="ln-chip ${TR_OTHER_SORT === k ? 'on' : ''}" data-osort="${k}">${l}</button>`).join('')}</div>
-      <div class="ln-chips tr-clis"><button type="button" class="ln-chip ${TR_OTHER_CLI === 'all' ? 'on' : ''}" data-ocli="all">Все</button>${otherClients.map(c => `<button type="button" class="ln-chip ${TR_OTHER_CLI === c ? 'on' : ''}" data-ocli="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
-    <button type="button" class="ln-wide tr-copyall" data-loccopy="1">📋 Локации для клиента</button>
+    ${grp && grp.k === 'sib' ? `<div class="ln-chips">${[['all','Все'],['aty','Атырау'],['sib','Сибур']].map(([k, l]) => `<button type="button" class="ln-chip ${TR_SUB === k ? 'on' : ''}" data-sub="${k}">${l}</button>`).join('')}</div>` : ''}
+    ${grp && grp.k === 'other' && otherClients.length ? `<div class="ln-chips tr-clis"><button type="button" class="ln-chip ${TR_OTHER_CLI === 'all' ? 'on' : ''}" data-ocli="all">Все</button>${otherClients.map(c => `<button type="button" class="ln-chip ${TR_OTHER_CLI === c ? 'on' : ''}" data-ocli="${esc(c)}">${esc(c)}</button>`).join('')}</div>` : ''}
+    ${isImp ? '<p class="sh-note" style="margin:0 2px 10px">Ижевск без выставленного счёта и все перевозки, где что-то написано в «прим» (в том числе выгруженные).</p>'
+      : `<button type="button" class="ln-wide tr-copyall" data-loccopy="1">📋 Локации для клиента</button>`}
     ${cards || '<div class="inv-plan">Здесь пока пусто.</div>'}`;
 
   m.querySelector('.g-refresh').onclick = () => loadShipments(true);
-  trBindTop(m);
   m.querySelectorAll('[data-grp]').forEach(b => b.onclick = () => { TR_GRP = b.dataset.grp; TR_SUB = 'all'; trLsSet('tr_grp', TR_GRP); renderShipments(); });
   m.querySelectorAll('[data-sub]').forEach(b => b.onclick = () => { TR_SUB = b.dataset.sub; renderShipments(); });
-  m.querySelectorAll('[data-osort]').forEach(b => b.onclick = () => { TR_OTHER_SORT = b.dataset.osort; trLsSet('tr_osort', TR_OTHER_SORT); renderShipments(); });
   m.querySelectorAll('[data-ocli]').forEach(b => b.onclick = () => { TR_OTHER_CLI = b.dataset.ocli; renderShipments(); });
-  m.querySelector('[data-loccopy]').onclick = () => trLocCopy(sorted, grp.k === 'sib');
+  const lc = m.querySelector('[data-loccopy]'); if (lc) lc.onclick = () => trLocCopy(sorted, grp && grp.k === 'sib');
   trBindCards(m);
 }
 function trBindCards(m){
@@ -1514,95 +1491,26 @@ function trBindCards(m){
   m.querySelectorAll('button[data-act]').forEach(b => b.onclick = () => {
     const r = byRow(b.dataset.row);
     if (b.dataset.act === 'loc') trAskLocation(r);
-    if (b.dataset.act === 'leg') trShowLegs(r);
   });
-}
-// Связанные заказы: главный + внутренние (через Можайск)
-function trLegs(r){
-  const all = TR_DATA.rows || [];
-  const mainNo = trMainOrder(r) || String(r.order || '').trim();
-  if (!mainNo) return [];
-  const legs = all.filter(x => String(x.order || '').trim() === mainNo || trMainOrder(x) === mainNo);
-  return legs.length > 1 ? legs.sort((a, b) => (trIso(a.d1) ? a.d1 : '9999').localeCompare(trIso(b.d1) ? b.d1 : '9999')) : [];
-}
-function trShowLegs(r){
-  const today = TR_DATA.today || trToday();
-  const legs = trLegs(r);
-  trSheet(`<div class="sh-head"><div><div class="sh-name">Плечи перевозки</div>
-      <div class="sh-sub">${esc(trGroupName(r))}${trHas(r.num) ? ' · № ' + esc(r.num) : ''}</div></div><button type="button" class="sh-x" aria-label="Закрыть">✕</button></div>
-    ${legs.map((x, i) => { const st = trStage(x, today); const main = !trMainOrder(x); return `<div class="tr-card st-${st}${x.row === r.row ? ' tr-cur' : ''}" style="cursor:default">
-      <div class="tr-head"><span><b>${i + 1}. ${main ? 'главный' : 'внутренний'}</b> · ${esc(x.truck || 'авто?')} · ${esc(x.car || 'перевозчик?')}</span><span class="tr-st st-${st}">${TR_ST_LABEL[st]}</span></div>
-      <div class="tr-line">📍 ${trHas(x.loc) ? esc(x.loc) : '<em>локация не указана</em>'}</div>
-      <div class="ar-sub">${[esc(x.route || ''), trHas(x.d1) ? 'погр. ' + trF(x.d1) : '', trHas(x.unFact) ? 'выгр. ' + trF(x.unFact) : '', trHas(x.order) ? 'order ' + esc(x.order) : ''].filter(Boolean).join(' · ')}</div>
-    </div>`; }).join('') || '<div class="inv-plan">Связанных заказов не найдено.</div>'}`);
 }
 
 const TR_ST_LABEL = { planned:'ждёт погрузки', onway:'в пути', unloaded:'выгружен', closed:'закрыт' };
-function trCard({ r, st, warn, g }, today){
+function trCard({ r, st, warn, g }, today, imp){
   const head = [`<b>${esc(trGroupName(r))}</b>`, trHas(r.truck) ? esc(r.truck) : '<em>авто?</em>', trHas(r.car) ? esc(r.car) : '<em>перевозчик?</em>'].join(' · ');
   const age = trLocAge(r);
-  const dt = trDaysText(r, today);
-  const line = `<span class="tr-loc ${age !== null && age > 24 ? 'tr-old' : ''}">📍 ${trHas(r.loc) ? esc(r.loc) + (age !== null ? ` <i>· ${trAgoText(age)}</i>` : '') : '<em>локация не указана</em>'}</span>${dt ? ` <span class="tr-dt">· ${dt}</span>` : ''}`;
+  const dt = st === 'unloaded' ? (trHas(r.unFact) ? 'выгружен ' + trF(r.unFact) : '') : trDaysText(r, today);
+  const line = `<span class="tr-loc ${age !== null && age > 24 && st !== 'unloaded' ? 'tr-old' : ''}">📍 ${trHas(r.loc) ? esc(r.loc) + (age !== null ? ` <i>· ${trAgoText(age)}</i>` : '') : '<em>локация не указана</em>'}</span>${dt ? ` <span class="tr-dt">· ${dt}</span>` : ''}`;
   const sub = [trHas(r.num) ? '№ ' + esc(r.num) : '', esc(r.route || ''), trHas(r.d1) ? 'погр. ' + trF(r.d1) : ''].filter(Boolean).join(' · ');
-  const legs = trLegs(r);
-  const legBtn = legs.length ? `<button type="button" data-act="leg" data-row="${r.row}">🔗 ${trMainOrder(r) ? 'Главный' : 'Внутренний'}</button>` : '';
-  return `<div class="tr-card g-${g} st-${st}${warn.length ? ' late' : ''}${trMainOrder(r) ? ' tr-kid' : ''}">
+  const why = imp ? [TR_GROUPS[0].test(r) && !trHas(r.inv) ? 'Ижевск — счёт не выставлен' : ''].filter(Boolean) : [];
+  const badges = [...why, ...warn.filter(w => !why.length || w !== 'Выставить счёт')];
+  return `<div class="tr-card g-${g} st-${st}${badges.length ? ' late' : ''}">
     <div class="tr-head"><span>${head}</span><span class="tr-st st-${st}">${TR_ST_LABEL[st]}</span></div>
     <div class="tr-line">${line}</div>
     ${sub ? `<div class="ar-sub">${sub}</div>` : ''}
-    ${trHas(r.note) ? `<div class="ar-sub">💬 ${esc(r.note)}</div>` : ''}
-    ${warn.length ? `<div class="tr-warns">${warn.map(w => `<span>${esc(w)}</span>`).join('')}</div>` : ''}
-    <div class="sp-btns"><button type="button" data-act="loc" data-row="${r.row}" class="primary">📍 Локация</button>${legBtn}</div>
+    ${trHas(r.note) ? `<div class="ar-sub tr-note">💬 ${esc(r.note)}</div>` : ''}
+    ${badges.length ? `<div class="tr-warns">${badges.map(w => `<span>${esc(w)}</span>`).join('')}</div>` : ''}
+    ${st === 'onway' || st === 'planned' ? `<div class="sp-btns"><button type="button" data-act="loc" data-row="${r.row}" class="primary" style="grid-column:1/-1">📍 Локация</button></div>` : ''}
   </div>`;
-}
-
-// ===== ОПЛАТА ПЕРЕВОЗЧИКАМ (дата считается в таблице: выгрузка + отсрочка из «Перевозчики») =====
-function renderCarrierPay(){
-  const today = TR_DATA.today || trToday();
-  const allRows = trAllRows();
-  const nWay = allRows.filter(x => !trIsDone(x.st)).length;
-  const mineRows = allRows.filter(x => !trIsColleague(x.r) && trHas(x.r.car));   // у коллег оплату не считаем
-  const nRu = mineRows.filter(x => trIsRuPay(x.r) && trIso(x.r.payCar)).length, nTr = mineRows.filter(x => !trIsRuPay(x.r) && trIso(x.r.payCar)).length;
-  const rows = mineRows.filter(x => TR_PAY_REG === 'tr' ? !trIsRuPay(x.r) : trIsRuPay(x.r));
-  const pay = rows.filter(x => trIso(x.r.payCar));
-  const late = pay.filter(x => x.r.payCar < today && trDays(x.r.payCar, today) <= 14).sort((a, b) => b.r.payCar.localeCompare(a.r.payCar));
-  const now = pay.filter(x => x.r.payCar === today);
-  const week = pay.filter(x => x.r.payCar > today && trDays(today, x.r.payCar) <= 7).sort((a, b) => a.r.payCar.localeCompare(b.r.payCar));
-  const later = pay.filter(x => trDays(today, x.r.payCar) > 7).sort((a, b) => a.r.payCar.localeCompare(b.r.payCar));
-  const noTerm = rows.filter(x => (x.st === 'unloaded' || x.st === 'closed') && trHas(x.r.unFact) && !trIso(x.r.payCar) && trDays(x.r.unFact, today) <= 60);
-  const noUnl = rows.filter(x => (x.st === 'unloaded' || x.st === 'closed') && !trHas(x.r.unFact));
-  const noInv = rows.filter(x => x.st === 'unloaded' && !trHas(trInvOf(x.r)));
-  const item = x => `<div class="tr-card g-${x.g} st-${x.st}" style="cursor:default">
-      <div class="tr-head"><span><b>${esc(x.r.car)}</b> · ${esc(x.r.truck || 'авто?')}</span><span class="tr-st">${trIso(x.r.payCar) ? trF(x.r.payCar) : ''}</span></div>
-      <div class="ar-sub">${[esc(trGroupName(x.r)), esc(x.r.route || ''), trHas(x.r.num) ? '№ ' + esc(x.r.num) : '', trHas(x.r.unFact) ? 'выгр. ' + trF(x.r.unFact) : '', trHas(x.r.net) ? 'нетто ' + trMoney(x.r.net) : ''].filter(Boolean).join(' · ')}</div>
-    </div>`;
-  const block = (title, arr, cls, hint) => arr.length ? `<h3 class="tr-payh ${cls || ''}">${title} · ${arr.length}</h3>${hint ? `<p class="sh-note" style="margin:-4px 2px 8px">${hint}</p>` : ''}${arr.map(item).join('')}` : '';
-  const m = document.getElementById('pMain');
-  m.innerHTML = `
-    ${trTopBar(nWay, trPayCount())}
-    <div class="tr-who2 tr-reg">
-      <button type="button" class="${TR_PAY_REG !== 'tr' ? 'on' : ''}" data-reg="ru">🇷🇺 РФ <span>${nRu}</span></button>
-      <button type="button" class="${TR_PAY_REG === 'tr' ? 'on' : ''}" data-reg="tr">🇹🇷 Турки <span>${nTr}</span></button>
-    </div>
-    <div class="tr-paytop"><b>Оплата перевозчикам · ${TR_PAY_REG === 'tr' ? 'турки' : 'РФ'}</b><button type="button" class="tr-grp g-refresh" aria-label="Обновить">↻</button></div>
-    <div class="tr-kpis tr-paykpi">
-      <div class="${now.length ? 'warn' : ''}"><strong>${now.length}</strong><span>сегодня</span></div>
-      <div><strong>${week.length}</strong><span>за 7 дней</span></div>
-      <div class="${late.length ? 'bad' : ''}"><strong>${late.length}</strong><span>срок прошёл</span></div>
-      <div class="${noTerm.length + noUnl.length ? 'warn' : ''}"><strong>${noTerm.length + noUnl.length}</strong><span>не посчитано</span></div>
-    </div>
-    ${block('Платить сегодня', now, 'warn')}
-    ${block('Ближайшие 7 дней', week)}
-    ${block('Срок прошёл (14 дней)', late, 'bad', 'Проверь, что оплачено.')}
-    ${block('Выгружен, но нет даты выгрузки', noUnl, 'warn', 'Поставь дату в столбце «выгружен» — тогда посчитается дата оплаты.')}
-    ${block('Нет срока оплаты у перевозчика', noTerm, 'warn', 'В листе «Перевозчики» у этого имени пусто в столбце G (оплата).')}
-    ${block('Позже', later)}
-    ${block('Выгружен — нет счёта', noInv, 'bad', 'В столбце «счет» пусто.')}
-    ${!now.length && !week.length && !late.length && !noTerm.length && !noUnl.length && !later.length && !noInv.length ? '<div class="inv-plan">Платежей нет.</div>' : ''}`;
-  trBindTop(m);
-  m.querySelectorAll('[data-reg]').forEach(b => b.onclick = () => { TR_PAY_REG = b.dataset.reg; trLsSet('tr_payreg', TR_PAY_REG); renderShipments(); });
-  m.querySelector('.g-refresh').onclick = () => loadShipments(true);
-  trBindCards(m);
 }
 
 function trSheet(html){
