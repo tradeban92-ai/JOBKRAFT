@@ -565,7 +565,7 @@
 <header>
   <div class="head-row"><p class="eyebrow" id="today"></p></div>
   <h1 id="pageTitle">Инвест</h1>
-  <p class="ver">версия 2026-11-18-1300</p>
+  <p class="ver">версия 2026-11-18-1400</p>
 </header>
 
 <nav class="tabs">
@@ -1124,7 +1124,7 @@ function renderArrivals(){
 // ============================================================
 const ORD = {
   orders: { api:'money-orders', wf:'Money Orders API', box:'o', title:'Открытые грузы', data:null },
-  atyrau: { api:'money-atyrau', wf:'Money Atyrau API', box:'y', title:'Атырау — Турция', data:null },
+  atyrau: { api:'money-atyrau', wf:'Money Atyrau API', box:'y', title:'Атырау — Турция', data:null, filter:'mine' },   // «Мои» — в G «Саша А»; «Открытые» — G пустой
   // Атырау — Европа: «Мои» (в E «Саша А», K пустой) и «Открытые» (E пустой, A и B заполнены)
   atyeu:  { api:'money-atyrau-eu', wf:'Money Atyrau EU API', box:'u', title:'Атырау — Европа', data:null, filter:'mine' }
 };
