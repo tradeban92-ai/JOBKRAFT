@@ -570,15 +570,14 @@
 <header>
   <div class="head-row"><p class="eyebrow" id="today"></p><p class="me" id="meLine"></p></div>
   <h1 id="pageTitle">Инвест</h1>
-  <p class="ver">версия 2026-11-10-2300</p>
+  <p class="ver">версия 2026-11-18-1300</p>
 </header>
 
 <nav class="tabs">
   <button type="button" data-tab="shipments" class="on">Перевозки</button>
   <button type="button" data-tab="payments">Оплаты</button>
-  <button type="button" data-tab="arrivals">Не прибыли</button>
-  <button type="button" data-tab="orders">Открытые</button>
   <button type="button" data-tab="atyrau">Атырау</button>
+  <button type="button" data-tab="atyeu">Атырау ЕС</button>
   <button type="button" data-tab="clients">Клиенты</button>
   <button type="button" class="tab-more hidden" id="moreBtn" aria-label="Ещё разделы" aria-expanded="false">⋯</button>
 </nav>
@@ -623,6 +622,11 @@
 <div id="tabAtyrau" class="hidden">
   <div id="yState" class="state"><b>Загружаю…</b></div>
   <div id="yMain" class="wrap hidden"></div>
+</div>
+
+<div id="tabAtyEu" class="hidden">
+  <div id="uState" class="state"><b>Загружаю…</b></div>
+  <div id="uMain" class="wrap hidden"></div>
 </div>
 
 <div id="tabClients" class="hidden">
@@ -678,9 +682,8 @@ document.getElementById('sheetBg').addEventListener('click', e => { if (e.target
 const TABS = {
   shipments: { el:'tabShipments', title:'Перевозки', load: () => loadShipments() },
   payments: { el:'tabPayments', title:'Оплаты перевозчикам', load: () => loadPayments() },
-  arrivals: { el:'tabArrivals', title:'Не прибыли', load: () => loadArrivals() },
-  orders:   { el:'tabOrders',   title:'Открытые грузы', load: () => loadOrders('orders') },
   atyrau:   { el:'tabAtyrau',   title:'Атырау — Турция', load: () => loadOrders('atyrau') },
+  atyeu:    { el:'tabAtyEu',    title:'Атырау — Европа', load: () => loadOrders('atyeu') },
   clients:  { el:'tabClients',  title:'Клиенты', load: () => loadClients() }
 };
 const MORE_TABS = [];
@@ -1148,7 +1151,9 @@ function renderArrivals(){
 // ============================================================
 const ORD = {
   orders: { api:'money-orders', wf:'Money Orders API', box:'o', title:'Открытые грузы', data:null },
-  atyrau: { api:'money-atyrau', wf:'Money Atyrau API', box:'y', title:'Атырау — Турция', data:null }
+  atyrau: { api:'money-atyrau', wf:'Money Atyrau API', box:'y', title:'Атырау — Турция', data:null },
+  // Атырау — Европа: «Мои» (в E «Саша А», K пустой) и «Открытые» (E пустой, A и B заполнены)
+  atyeu:  { api:'money-atyrau-eu', wf:'Money Atyrau EU API', box:'u', title:'Атырау — Европа', data:null, filter:'mine' }
 };
 let OR_DATA = null;            // данные для рассылки (той вкладки, откуда её открыли)
 function orState(src, title, text){
@@ -1166,7 +1171,7 @@ async function loadOrders(src, force){
     const r = await fetch(`${API}/${S.api}?init_data=${encodeURIComponent(initData)}&user_id=${tgUser.id}`);
     const raw = await r.json();
     const d = Array.isArray(raw) ? raw[0] : raw;
-    if (!d || d.ok === false){ orState(src, 'Нет доступа', 'Раздел только для владельца бота.'); return; }
+    if (!d || d.ok === false){ orState(src, 'Нет доступа', 'Раздел только для тех, кто есть в списке доступа.'); return; }
     S.data = d;
     orState(src, '');
     document.getElementById(S.box + 'Main').classList.remove('hidden');
@@ -1185,7 +1190,12 @@ function orPrice(list){
 }
 function renderOrders(src){
   const S = ORD[src], pre = S.box;
-  const rows = S.data.rows || [], today = S.data.today;
+  const all = S.data.rows || [], today = S.data.today;
+  const rows = S.filter ? all.filter(r => S.filter === 'mine' ? r.mine : r.open) : all;
+  const flt = S.filter ? `<div class="tr-who2">
+      <button type="button" class="${S.filter === 'mine' ? 'on' : ''}" data-flt="mine">Мои <span>${all.filter(r => r.mine).length}</span></button>
+      <button type="button" class="${S.filter === 'open' ? 'on' : ''}" data-flt="open">Открытые <span>${all.filter(r => r.open).length}</span></button>
+    </div>` : '';
   const byDate = {};
   rows.forEach(r => { (byDate[r.date || ''] = byDate[r.date || ''] || []).push(r); });
   const dates = Object.keys(byDate).sort((a, b) => (a || '9999').localeCompare(b || '9999'));
@@ -1212,13 +1222,14 @@ function renderOrders(src){
       }).join('')}</div>`;
   }).join('');
   const m = document.getElementById(pre + 'Main');
-  m.innerHTML = `
-    <div class="or-sum"><div><b>${esc(S.title)}</b><span>${late ? `с прошедшей датой: ${late} · ` : ''}обновлено ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</span></div>
+  m.innerHTML = `${flt}
+    <div class="or-sum"><div><b>${esc(S.title)}${S.filter ? ' · ' + (S.filter === 'mine' ? 'мои' : 'открытые') : ''}</b><span>${late ? `с прошедшей датой: ${late} · ` : ''}обновлено ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</span></div>
       <strong>${rows.length}</strong><button type="button" class="or-refresh" aria-label="Обновить">↻</button></div>
-    ${rows.length ? '<button type="button" class="ln-wide or-bc" style="margin:0 0 10px">📣 Рассылка перевозчикам</button>' : '<div class="inv-plan">Открытых грузов нет ✓</div>'}
+    ${rows.length ? (S.filter === 'mine' ? '' : '<button type="button" class="ln-wide or-bc" style="margin:0 0 10px">📣 Рассылка перевозчикам</button>') : `<div class="inv-plan">${S.filter === 'mine' ? 'Твоих грузов без отметки нет ✓' : 'Открытых грузов нет ✓'}</div>`}
     ${html}`;
   m.querySelector('.or-refresh').onclick = () => loadOrders(src, true);
-  const bc = m.querySelector('.or-bc'); if (bc) bc.onclick = () => { OR_DATA = S.data; openBroadcast(); };
+  const bc = m.querySelector('.or-bc'); if (bc) bc.onclick = () => { OR_DATA = { ...S.data, rows }; openBroadcast(); };
+  m.querySelectorAll('[data-flt]').forEach(b => b.onclick = () => { S.filter = b.dataset.flt; renderOrders(src); });
   m.querySelectorAll('[data-open]').forEach(b => b.onclick = () => {
     const box = document.getElementById(b.dataset.open);
     const open = box.classList.toggle('hidden') === false;
